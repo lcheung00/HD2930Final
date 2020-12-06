@@ -1,6 +1,8 @@
 #-------Read Data--------
 library(tidyverse)
 suicidedata <- read_csv("master.csv") #make sure your working directory is to folder with master.csv
+a=1
+
 
 #-------Exploring Outliers/Errors in Suicide Data---------
 suicidedata %>% 
