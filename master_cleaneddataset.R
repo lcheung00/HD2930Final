@@ -1,6 +1,7 @@
 #-------Read Data--------
 library(tidyverse)
 suicidedata <- read_csv("master.csv") #make sure your working directory is to folder with master.csv
+
 #-------Exploring Outliers/Errors in Suicide Data---------
 suicidedata %>% 
   count(year) #remove 2016 with very low numbers (<200) <- outliers (found from raw suicide count)
