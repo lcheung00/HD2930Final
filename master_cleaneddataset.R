@@ -1,7 +1,6 @@
 #-------Read Data--------
 library(tidyverse)
 suicidedata <- read_csv("master.csv") #make sure your working directory is to folder with master.csv
-a=1
 
 
 #-------Exploring Outliers/Errors in Suicide Data---------
@@ -94,3 +93,8 @@ region_data <- yearly_data %>%
   rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp)`) %>% 
   mutate(suicide_rate = (suicides_no/population*100000),
          gdp_per_capita = (gdp/population))
+
+
+
+b=2
+c=3
