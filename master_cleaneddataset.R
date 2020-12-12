@@ -93,3 +93,107 @@ region_data <- yearly_data %>%
   rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp)`) %>% 
   mutate(suicide_rate = (suicides_no/population*100000),
          gdp_per_capita = (gdp/population))
+
+yearly_data %>% 
+  ggplot(aes(x = year, y =suicide_per_100k)) +
+  stat_bin_hex()+
+  scale_fill_gradient(low= "lightblue", high = "darkblue")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "Year")+
+  ggtitle("Suicide Rates over Time")
+#One country has extremely high suicide rates in a few years
+#That country is lithuania and the years are after the breakup of the soviet union
+
+yearly_data %>% 
+  filter(country == "Lithuania") %>% 
+  ggplot(aes(x = gdp_per_capita, y = suicide_per_100k)) +
+  geom_point()+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("Lithuania GDP vs Suicide Rates")
+#Plotting Lituania's GDP vs suicide rates
+
+yearly_data %>% 
+  ggplot(aes(x = gdp_per_capita, y = suicide_per_100k)) +
+  stat_bin_hex()+
+  scale_fill_gradient(low= "lightblue", high = "darkblue")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita vs Suicide Rates")
+#plotting the world's suicide rates vs gdp per capita
+
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita, data = .)->yearly_model
+#seeing if gdp per capita predicts suicide rates
+yearly_data %>% 
+  add_predictions(yearly_model) %>% add_residuals(yearly_model)->yearly_data
+
+ggplot(yearly_data)+
+  geom_point(aes(x = gdp_per_capita, y = suicide_per_100k))+
+  geom_line(aes(x = gdp_per_capita, y = pred), color = "orange")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita Linear Model")
+#seeing if gdp per capita predicts suicide rates
+#the model goes the opposite direction of our expectation
+
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita + I(gdp_per_capita^2), data = .)->yearly_model2
+#model with beta squared interaction
+yearly_data %>% 
+  add_predictions(yearly_model2) %>% add_residuals(yearly_model2)->yearly_data
+
+ggplot(yearly_data)+
+  geom_point(aes(x = gdp_per_capita, y = suicide_per_100k))+
+  geom_line(aes(x = gdp_per_capita, y = pred), color = "orange")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita Quadratic Model")
+#seeing if adding a quadratic factor improves the validity of the model. It is better but there are some issues
+#We need some way to weight the points based on population. the countries with the highest GDP per capita are the largest
+#and all the countries with low GDP and low suicides are relatively small
+
+#adding in data from the world bank development indicators 
+read_csv("Education Spending Data.csv") -> Education_Spending_Data 
+read_csv("Unemployment Data.csv") -> Unemployment_Data
+
+Education_Spending_Data %>% 
+  mutate(across('1987':'2015', as.numeric))->Education_Spending_Data
+
+Education_Spending_Data %>%    
+  pivot_longer(!'Country Name', names_to = "year", values_to = "Education Spending") ->education
+
+education %>% 
+  mutate(across(year, as.integer)) %>% 
+  rename(country = `Country Name`) ->education
+
+left_join(yearly_data, education) ->yearly_data
+
+Unemployment_Data %>% 
+  mutate(across('1987':'2015', as.numeric))->Unemployment_Data
+
+Unemployment_Data %>%     
+  pivot_longer(!'Country Name', names_to = "year", values_to = "Unemployment Rate") ->unemployment
+
+unemployment %>% 
+  mutate(across(year, as.integer)) %>% 
+  rename(country = `Country Name`) ->unemployment
+
+left_join(yearly_data, unemployment) ->yearly_data
+
+yearly_data %>% 
+  ggplot(aes(x = `Unemployment Rate`, y = suicide_per_100k)) +
+  stat_bin_hex()+
+  scale_fill_gradient(low= "lightblue", high = "darkblue")+
+  ylab("Suicides per 100k Population")+
+  ggtitle("Unemployment and Suicide Rates")
+#plotting the world's suicide rates vs gdp per capita
+
+#model using world bank data
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita + `Unemployment Rate` + `Education Spending`, data = .)->yearly_model3
+
+yearly_data %>% 
+  add_predictions(yearly_model3) %>% add_residuals(yearly_model3)->yearly_data
+
+summary(yearly_model3)
