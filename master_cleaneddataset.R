@@ -236,7 +236,8 @@ europesuicide %>% ggplot(aes(x=year, y=`suicides/100k pop`)) +
 # To check one more thing, this graph depicts year against suicide rate in Europe; as shown earlier, there is not correlation, although there are a few
 # extra male outliers around the 1990s. A few tragedies such as the death of Princess Diana occurred in 1990s Europe, but there is no actual spike
 
-suicidejoin2 %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
+
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
   geom_jitter(aes(color=sex), alpha=0.5) +
   xlab("GDP per Capita") +
   ylab("Suicide Rate") +
