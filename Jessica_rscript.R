@@ -214,4 +214,13 @@ suimod3 <- pred_data %>%
   add_predictions(mod3) %>%
   add_residuals(mod3)
 ggplot(suimod3, aes(x=resid))+
+  geom_freqpoly()
+mod4 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+generation+sex, data=.)
+suimod4 <- pred_data %>%
+  add_predictions(mod4) %>%
+  add_residuals(mod4)
+ggplot(suimod4, aes(x=resid))+
   geom_freqpoly() #best model based on residuals
+suimod4a<- suimod4 %>%
+  filter(resid >= 20 | resid <=-20)
