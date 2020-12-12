@@ -1,7 +1,8 @@
 #-------Read Data--------
 library(tidyverse)
+library(modelr)
 suicidedata <- read_csv("master.csv") #make sure your working directory is to folder with master.csv
-hello
+
 
 #-------Exploring Outliers/Errors in Suicide Data---------
 suicidedata %>% 
@@ -21,6 +22,21 @@ suicidedataclean <- suicidedata %>%
   rename(gdp_year=`gdp_for_year ($)`,
          gdp_per_capita=`gdp_per_capita ($)`)
 
+
+#-------Creating Usable DataSets from Cleaned Data--------
+
+#yearly_data: aggregated by country, year
+aggregate(suicidedataclean$suicides_no, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+yearly_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+
 #-------Adding Other Datasets to Suicide Data----------
 #Adding Continent Column#
 library(gapminder)
@@ -30,16 +46,14 @@ countryregion <- gapminder %>%
   select(country,continent) #get all countries
 suicidedataclean <- merge(suicidedataclean, countryregion) #assign continent value
 
-#-------Creating Usable DataSets from Cleaned Data--------
-
-#yearly_data: aggregated by country, year
+#yearly_data: aggregated by country, year, continent
 aggregate(suicidedataclean$suicides_no, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN=sum) %>%
   rename(c( "suicides_no" = "x")) -> data1
 aggregate(suicidedataclean$population, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN=sum) %>%
   rename(c( "population" = "x"))->data2
 aggregate(suicidedataclean$gdp_per_capita, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN='mean') %>%
   rename(c( "gdp_per_capita" = "x"))->data3
-yearly_data <- left_join(data1, data2) %>%
+yearly_data_2 <- left_join(data1, data2) %>%
   left_join(data3) %>%
   mutate("gdp" = gdp_per_capita*population) %>%
   mutate("suicide_per_100k" = suicides_no/population*100000)
@@ -81,11 +95,11 @@ gen_data <- left_join(data1, data2) %>%
   mutate("suicide_per_100k" = suicides_no/population*100000)
 
 #region_data: aggregated by year, world region
-country_per_continent <- yearly_data %>% 
+country_per_continent <- yearly_data_2 %>% 
   group_by(continent, year) %>%
   count(continent) #low numbers in Oceania & Africa & Asia -> group then together
 View(country_per_continent)
-region_data <- yearly_data %>% 
+region_data <- yearly_data_2 %>% 
   select(year, suicides_no, population, gdp, continent) %>% 
   mutate(continent = fct_lump(continent, n=2)) %>% 
   group_by(continent, year) %>% 
