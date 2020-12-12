@@ -342,6 +342,8 @@ Visually, we found no correlation between suicide and unemployment, infant morta
 
 
 ```{r}
+aggregate(suicidejoin2$`suicides/100k pop`, by=list(sex=suicidejoin2$sex, year=suicidejoin2$year, unemployment=suicidejoin2$male_unemployment, generation=suicidejoin2$generation), FUN=sum) %>%
+  rename(c("suicides_rate" = "x")) -> unem_male # aggregate by sex, year, male unemployment, generation
 
 unem_male %>% ggplot(aes(x=unemployment, y=suicides_rate)) +
   geom_jitter(aes(color=sex), alpha=0.5) +
@@ -361,6 +363,7 @@ suicidejoin2 %>% filter(!is.na(sex)) %>%
         axis.ticks.x=element_blank()) +
   theme(plot.title = element_text(face="bold", hjust=0.5)) 
 
+suicidejoin2 %>% filter(continent=="Europe") -> europesuicide
 
 europesuicide %>% ggplot(aes(x=sex, y=`suicides/100k pop`)) +
   geom_violin(aes(fill=sex)) +
@@ -429,6 +432,9 @@ mod1 <- pred_data %>%
   lm(suicide_per_100k~age+generation+year+continent+sex, data=.)
 summary(mod1)#summary of model 1
 #predictive model indicates that age, year, and continent have the most significance
+suimod1 <- pred_data%>%
+  add_predictions(mod1) %>%
+  add_residuals(mod1)
 ggplot(suimod1, aes(x=resid))+
   geom_freqpoly()+
   labs(title="Residuals Plot of Suicide Rates with Age, \nGeneration, Year, Continent, and Sex as Predictors")
