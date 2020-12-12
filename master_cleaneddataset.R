@@ -326,3 +326,105 @@ suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=suicide_
 # rate in both sexes; however, the last couple of graphs seem to give evidence 
 # against this assertion. Another large trend in this data is that male suicide
 # rate is remarkably and reliably higher across all plots.
+
+
+# --------------------------Making Models of the Main Findings and Non-Correlated Findings-----------------------------
+# The models will be presented through summary statistics because of the difficulty
+# of plotting continuous variables and their interactions; the models will be
+# made to corroborate or debunk previous graphical findings
+
+suicidejoin2 %>% rename(suicide_rate = "suicides/100k pop") -> suicide_exp 
+# The suicide rate variable has been renamed and a new dataset loaded to differentiate model code
+
+# Model 1: predicting suicide rate from sex and gdp per capita
+lm(suicide_rate ~ sex +
+     gdp_per_capita +
+     sex*gdp_per_capita, data=suicide_exp) -> model1
+summary(model1)
+# A summary of this model finds that male sex, gdp per capita, and the interaction
+# between these two variables are all significant predictors of suicide rate,
+# which corroborates the previous graphs of a correlation
+
+suicide_exp %>% add_predictions(model1, var="pred1") %>% add_residuals(model1, var="resid1") -> suicide_exp
+suicide_exp %>% ggplot(aes(resid1)) +
+  geom_freqpoly(binwidth=0.5)
+# A plot of the residuals, however, shows that this model is a bit all over the place,
+# which is likely due to the large amount of outliers this data contains
+
+
+# Model 2: predicting suicide rate from sex and gdp per capita in aggregated data
+lm(suicide_per_100k ~ sex +
+     gdp_per_capita +
+     sex*gdp_per_capita, data=sex_data) -> model2
+summary(model2)
+# When comparing the aggregated and non-aggregated data, male sex and gdp per 
+# capita predict suicide rate, but the interaction between them does not
+
+# Model 3: predicting American suicides by sex and gdp and then sex and year
+aggregate(suicide_exp$suicide_rate, by=list(year=suicide_exp$year, country=suicide_exp$country, sex=suicide_exp$sex, gdp=suicide_exp$gdp_per_capita),FUN=sum) %>%
+  rename(c( "suicide_rate" = "x")) -> sex_country_data
+sex_country_data %>% filter(country=="United States") -> sex_USA_data
+# new aggregated dataset of American suicides created
+
+lm(suicide_rate ~ sex +
+     gdp +
+     sex*gdp, data=sex_USA_data) -> model3
+summary(model3)
+# Male sex and the interaction of gdp and male sex are significant predictors
+
+
+# Model 4: Exploring sex differences in Europe
+aggregate(suicide_exp$suicide_rate, by=list(year=suicide_exp$year, continent=suicide_exp$continent, sex=suicide_exp$sex, gdp=suicide_exp$gdp_per_capita),FUN=sum) %>%
+  rename(c( "suicide_rate" = "x")) -> sex_continent_data
+sex_continent_data %>% filter(continent=="Europe") -> sex_Euro_data
+# new aggregated dataset
+
+lm(suicide_rate ~ sex +
+     gdp +
+     sex*gdp, data=sex_Euro_data) -> model4
+summary(model4)
+# Like the United States model, male sex and the interaction between male sex and
+# gdp are significant predictors of suicide in Europe
+
+
+# Model 5: predicting suicide rate from sex and male infant mortality rate
+suicide_exp$infant_deaths_per_1000_male <- as.numeric(suicide_exp$infant_deaths_per_1000_male)
+# Male infant mortality was imported as a factor variable, so in order to be modeled
+# it had to be converted into a numeric
+lm(suicide_rate ~ sex +
+     infant_deaths_per_1000_male +
+     sex*infant_deaths_per_1000_male, data=suicide_exp) -> model5
+summary(model5)
+# Contrary to the previous graph, this model strongly predicts suicide from male
+# infant mortality rate, male sex, and the interaction
+
+
+# Model 6: predicting suicide rate from sex and male unemployment
+suicide_exp$male_unemployment <- as.numeric(suicide_exp$male_unemployment)
+# Male unemployment was imported as a factor variable, so in order to be modeled
+# it had to be converted into a numeric
+lm(suicide_rate ~ sex +
+     male_unemployment +
+     sex*male_unemployment, data=suicide_exp) -> model6
+summary(model6)
+# Going back to the absence of a relationship between unemployment and suicide,
+# this model found that male unemployment was not a significant predictor of
+# suicide, but male sex and the interaction variable were significant
+
+# As an aside, the aggregated data (Model_) shows the same thing
+unem_male$unemployment <- as.numeric(unem_male$unemployment)
+# Male unemployment was imported as a factor variable, so in order to be modeled
+# it had to be converted into a numeric
+lm(suicides_rate ~ sex +
+     unemployment +
+     sex*unemployment, data=unem_male) -> model_
+summary(model_)
+
+
+# -------------------------------In Conclusion...-------------------------------
+# From the models of aggregated and original data, it seems that male sex is a 
+# major predictor of suicide both individually and in interaction with multiple variables,
+# such as male unemployment and gdp; in addition, gdp per capita also seems to be a predictor. 
+# Some unexpected findings from these models are that male infant mortality rate 
+# and HDI individually predicted suicide; expectedly, variables like year and male 
+# unemployment were not significant individual predictors.
