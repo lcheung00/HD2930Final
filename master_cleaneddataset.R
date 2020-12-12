@@ -1,7 +1,10 @@
 #-------Read Data--------
 library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(naniar)
+library(modelr)
 suicidedata <- read_csv("master.csv") #make sure your working directory is to folder with master.csv
-hello
 
 #-------Exploring Outliers/Errors in Suicide Data---------
 suicidedata %>% 
@@ -20,6 +23,8 @@ suicidedataclean <- suicidedata %>%
          country!="Saint Kitts and Nevis") %>% 
   rename(gdp_year=`gdp_for_year ($)`,
          gdp_per_capita=`gdp_per_capita ($)`)
+suicidedataclean$gdp_year <- as.integer(suicidedataclean$gdp_year)
+suicidedataclean$gdp_per_capita <- as.integer(suicidedataclean$gdp_per_capita)
 
 #-------Adding Other Datasets to Suicide Data----------
 #Adding Continent Column#
@@ -93,3 +98,4 @@ region_data <- yearly_data %>%
   rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp)`) %>% 
   mutate(suicide_rate = (suicides_no/population*100000),
          gdp_per_capita = (gdp/population))
+
