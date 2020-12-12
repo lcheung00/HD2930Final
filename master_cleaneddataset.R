@@ -95,6 +95,3 @@ region_data <- yearly_data %>%
          gdp_per_capita = (gdp/population))
 
 
-
-b=2
-c=3
