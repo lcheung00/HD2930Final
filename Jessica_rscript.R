@@ -174,3 +174,44 @@ ggplot(continent_age, aes(x=year, y=suicide_per_100k, color=continent))+
   geom_point()+
   geom_line()+
   facet_grid(age~., scales="free")
+
+#----------Models Using Variables Age, Generation, Year, and Sex------
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+pred_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+library(modelr)
+mod1 <- pred_data %>%
+  lm(suicide_per_100k~age+generation+year+continent+sex, data=.)
+summary(mod1)
+#predictive model indicates that age, year, and continent have the most significance
+suimod1 <- pred_data%>%
+  add_predictions(mod1) %>%
+  add_residuals(mod1)
+ggplot(suimod1, aes(x= suicide_per_100k,y=pred))+
+  geom_point()+
+  geom_point(aes(y=pred), color = "red", alpha=.3)
+ggplot(suimod1, aes(x=resid))+
+  geom_freqpoly() #residuals plotted show that model overpredicts suicide rate
+#Use age, year,  and continent
+mod2 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+year, data=.)
+suimod2 <- pred_data %>%
+  add_predictions(mod2) %>%
+  add_residuals(mod2)
+ggplot(suimod2, aes(x=resid))+
+  geom_freqpoly()
+summary(mod2)
+mod3 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+year+sex, data=.)
+suimod3 <- pred_data %>%
+  add_predictions(mod3) %>%
+  add_residuals(mod3)
+ggplot(suimod3, aes(x=resid))+
+  geom_freqpoly() #best model based on residuals
