@@ -119,7 +119,6 @@ gen_data <- left_join(data1, data2) %>%
 country_per_continent <- yearly_data_2 %>% 
   group_by(continent, year) %>%
   count(continent) #low numbers in Oceania & Africa & Asia -> group then together
-View(country_per_continent)
 region_data <- yearly_data_2 %>% 
   select(year, suicides_no, population, gdp, continent) %>% 
   mutate(continent = fct_lump(continent, n=2)) %>% 
@@ -413,6 +412,7 @@ summary(model4)
 From the exploratory data analysis, the line plot indicated that suicide rates have been decreasing overtime for all age groups and there is a large consistent gap in suicide rate among age groups: suicide rate was highest among oldest age groups and lowest among lower age groups. Suicide rates are also highest among oldest generations compared to the youngest generations, and lines show a step-wise increase which charts the influence of age on suicide rate (with the exception of the GI generation that shows a decreasing trend in suicide rate over time after a peak in suicide rate in 1990). Charting economic data (GDP per capita) with age and generation over time shows little visual difference than if GDP per capita was not incorporated in the graph. Charting the sex variable showed a difference between suicide rates by age and generation over time. Including the continent variable (with 3 factors, Americas, Europe, and all other continents grouped into Other) in the suicide rates by age and by generation graphs showed that suicide rates by age and generation varied greatly between continents. Based on these visualizations, a new dataset named “pred_data” was created which aggregates suicide rater (per 100k) by year, age, continent, generation, and sex. A predictive model setting all these variables as predictors indicated that age, year, and continent were most significant (<0.0001 level). Creating an additional model incorporating age, sex, year and continent produced predictions that had the smallest residuals. 
 
 ```{r}
+#Create new dataset using sex, generation, age, continent and year variables
 aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN=sum) %>%
   rename(c( "suicides_no" = "x")) -> data1
 aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN=sum) %>%
@@ -423,15 +423,16 @@ pred_data <- left_join(data1, data2) %>%
   left_join(data3) %>%
   mutate("gdp" = gdp_per_capita*population) %>%
   mutate("suicide_per_100k" = suicides_no/population*100000)
-library(modelr)
+
+#Model 1 - Use age, generation, year, continent, sex variables
 mod1 <- pred_data %>%
   lm(suicide_per_100k~age+generation+year+continent+sex, data=.)
-summary(mod1)
-
-ggplot(suimod1, aes(x=resid))+
-  geom_freqpoly() #residuals plotted show that model overpredicts suicide rate
-
+summary(mod1)#summary of model 1
 #predictive model indicates that age, year, and continent have the most significance
+ggplot(suimod1, aes(x=resid))+
+  geom_freqpoly()+
+  labs(title="Residuals Plot of Suicide Rates with Age, \nGeneration, Year, Continent, and Sex as Predictors")
+#residuals plotted show that model overpredicts suicide rate
 
 mod2 <- pred_data %>% 
   lm(suicide_per_100k~age+continent+year, data=.)
@@ -439,9 +440,8 @@ suimod2 <- pred_data %>%
   add_predictions(mod2) %>%
   add_residuals(mod2)
 ggplot(suimod2, aes(x=resid))+
-  geom_freqpoly()
-summary(mod2)
-
+  geom_freqpoly()+
+   labs(title="Residuals Plot of Suicide Rates with Age, \nContinent, and Year as Predictors")
 
 mod3 <- pred_data %>% 
   lm(suicide_per_100k~age+continent+year+sex, data=.)
@@ -449,7 +449,8 @@ suimod3 <- pred_data %>%
   add_predictions(mod3) %>%
   add_residuals(mod3)
 ggplot(suimod3, aes(x=resid))+
-  geom_freqpoly()
+  geom_freqpoly()+
+  labs(title= "Residuals Plot of Suicide Rates with Age, \n Year, Continent, and Sex as Predictors")
 
 mod5 <- pred_data %>% 
   lm(suicide_per_100k~age+continent+sex, data=.)
@@ -457,7 +458,8 @@ suimod5 <- pred_data %>%
   add_predictions(mod5) %>%
   add_residuals(mod5)
 ggplot(suimod5, aes(x=resid))+
-  geom_freqpoly() #best model based on residuals
+  geom_freqpoly()+
+  labs(title= "Residuals Plot of Suicide Rates with Age, \nContinent, and Sex as Predictors")#best model based on residuals
 ```
 
 #Evan - discussion
