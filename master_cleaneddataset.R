@@ -140,3 +140,44 @@ full_join(suicidedataclean2, suicidedataclean3) -> suicidejoin1
 # male and female unemployment and infant mortality (male) datasets joined into a final product
 full_join(suicidejoin1, suicidedataclean4) -> suicidejoin2
 
+
+#-------Exploring the Data for Gender Interactions with More Aggregated Datasets and then Graphing some Relationships--------
+
+aggregate(suicidejoin2$`suicides/100k pop`, by=list(sex=suicidejoin2$sex, year=suicidejoin2$year, unemployment=suicidejoin2$female_unemployment, generation=suicidejoin2$generation), FUN=sum) %>%
+  rename(c("suicides_rate" = "x")) -> unem_fem # aggregate by sex, year, female unemployment, generation
+
+aggregate(suicidejoin2$`suicides/100k pop`, by=list(sex=suicidejoin2$sex, year=suicidejoin2$year, unemployment=suicidejoin2$male_unemployment, generation=suicidejoin2$generation), FUN=sum) %>%
+  rename(c("suicides_rate" = "x")) -> unem_male # aggregate by sex, year, male unemployment, generation
+
+unem_fem %>% ggplot(aes(x=unemployment, y=suicides_rate)) +
+  geom_jitter(aes(color=year), alpha=0.5) +
+  xlab("Female Unemployment Rate") +
+  ylab("Suicide Rate") +
+  ggtitle("No Visual Relationship Between Female Unemployment and Suicide Rate") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) 
+# In a graph of female unemployment vs. suicide rate and colored by year, there is no relationship between female unemployment and suicide rate
+
+unem_male %>% ggplot(aes(x=unemployment, y=suicides_rate)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("Male Unemployment Rate") +
+  ylab("Suicide Rate") +
+  ggtitle("No Strong Relationship Between Male Unemployment and Suicide Rate") +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) 
+# In a graph of male unemployment vs. suicide rate and colored by sex, there is no relationship between male unemployment and suicide rate
+
+suicidejoin2 %>% filter(!is.na(sex)) %>% 
+  ggplot(aes(x=infant_deaths_per_1000_male, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex)) +
+  xlab("Infant Male Mortality Rate") +
+  ylab("Suicide Rate") +
+  ggtitle("No Strong Relationship Between Male Infant Mortality and Suicide Rates") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) 
+# There is also no discernable relationship between infant male mortality rate and suicide rate
+
+# Surprisingly, it seems that unemployment for either sex and suicide do not correlate,
+# and neither do male infant mortality and suicide, although this will be modeled later 
+# to be sure
