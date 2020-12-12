@@ -112,3 +112,19 @@ ggplot(age_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=age))+
 #GDP has a greater impact on suicide rates for older adults than younger (slope of line)
 #inflection point at 15000 GDP per capita
 #highly similar to pure age and suicide rates graph
+#--------Generation Graphs---------
+ggplot(gen_data, aes(x=year, y=suicide_per_100k, color=generation))+
+  geom_line()+ #Oddly, 2016 had very low number of data, but the rate remains consistent
+  geom_point()+
+  labs(title="Worldwide Suicide Death Rates by Generation from 1985-2016",
+       x="Year", y="Suicides per 100k people")
+#Also GI generation has decreasing number of worldwide suicide deaths as they age
+#All other groups are increasing (contradicting age graph) but still lower than oldest group
+#Order: GI, Silent, Boomer, Gen X, Mil, Gen Z
+
+ggplot(gen_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=generation))+
+  geom_point()+
+  labs(title="Worldwide Suicide Death Rates by Generation from 1985-2016",
+       x="GDP", y="Suicides per 100k people") 
+#GI gen tend to have lower GDP per capita
+#Younger gens with higher GDP have highest suicide rates (likely b/c economic development rather than gdp really having an effect)
