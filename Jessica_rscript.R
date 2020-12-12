@@ -155,3 +155,22 @@ ggplot(gen_sex_data, aes(x=year, y=suicide_per_100k, color=generation))+
   geom_line()+
   facet_grid(sex~., scales = "free")
 #Gender seems to play a role in age/generation
+
+#----------Effect of continent on age and generation graphs-------------------
+continent_age <- suicidedataclean %>% 
+  select(year, age, suicides_no, population, gdp_year, continent) %>% 
+  mutate(continent = fct_lump(continent, n=2)) %>% 
+  group_by(continent, year, age) %>% 
+  summarise(sum(suicides_no),sum(population), sum(gdp_year)) %>% 
+  rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp_year)`) %>% 
+  mutate(suicide_per_100k = (suicides_no/population*100000),
+         gdp_per_capita = (gdp/population))
+ggplot(continent_age, aes(x=year, y=suicide_per_100k, color=age))+
+  geom_point()+
+  geom_line()+
+  facet_grid(continent~.,scales="free")
+#Europe has signifigantly more deaths
+ggplot(continent_age, aes(x=year, y=suicide_per_100k, color=continent))+
+  geom_point()+
+  geom_line()+
+  facet_grid(age~., scales="free")
