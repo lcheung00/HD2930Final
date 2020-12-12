@@ -128,3 +128,30 @@ ggplot(gen_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=generation))+
        x="GDP", y="Suicides per 100k people") 
 #GI gen tend to have lower GDP per capita
 #Younger gens with higher GDP have highest suicide rates (likely b/c economic development rather than gdp really having an effect)
+ggplot(gen_data, aes(x=year,y=gdp_per_capita, color=generation))+
+  geom_jitter(alpha=0.5)+
+  geom_smooth(se=FALSE)+ #remove confidence interval
+  labs(title="Worldwide Suicide Death Rates by Generation from 1985-2016",
+       x="Year", y="GDP per Capita")
+#Consistent increase among all generations; rule out gdp impact on age and generation over time
+
+#---------Sex and Generation Graph----------
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, generation=suicidedataclean$generation, sex=suicidedataclean$sex),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation, sex=suicidedataclean$sex), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation, sex=suicidedataclean$sex), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+gen_sex_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+ggplot(gen_sex_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=generation))+
+  geom_point()+
+  #geom_line()+
+  facet_grid(sex~., scales="free")
+ggplot(gen_sex_data, aes(x=year, y=suicide_per_100k, color=generation))+
+  geom_point()+
+  geom_line()+
+  facet_grid(sex~., scales = "free")
+#Gender seems to play a role in age/generation
