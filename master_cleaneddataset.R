@@ -181,3 +181,148 @@ suicidejoin2 %>% filter(!is.na(sex)) %>%
 # Surprisingly, it seems that unemployment for either sex and suicide do not correlate,
 # and neither do male infant mortality and suicide, although this will be modeled later 
 # to be sure
+
+
+# --------------------------Main Findings of Initial Graphs that Seem to Implicate a Relationship Between Sex and Suicide Rate, as Well as Sex Differences-------------------------
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=continent, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("Continent") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of Continent Versus Suicide Rate; Europe is an Outlier") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14))
+# Modeling suicides by continent, it seems that Europe has by far the highest suicide rates 
+
+suicidejoin2 %>% filter(continent=="Europe") -> europesuicide
+europesuicide %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of GDP Per Capita Versus Suicide Rate for European Countries") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14)) +
+  labs(caption="-there is an observable negative correlation between GDP and suicide-")
+# Zooming in on Europe, we see a general negative correlation between gdp per 
+# capita and suicide rate, with dramatic sex differences in suicide
+# rates but the same general trend for both sexes; however, this might be due more
+# to outliers than an actual effect (this will be explored more later)
+
+europesuicide %>% ggplot(aes(x=sex, y=`suicides/100k pop`)) +
+  geom_violin(aes(fill=sex)) +
+  xlab("Sex") +
+  ylab("Suicide Rate") +
+  ggtitle("Violin Plot Shows Large Sex Differences in Suicide Rate Distribution") +
+  theme(plot.title = element_text(face="bold", hjust=0.5))
+# A violin plot of this sex difference shows that female suicide rates are much lower and also have a much shorter tail of outliers
+
+europesuicide %>% ggplot(aes(x=year, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("Year") +
+  ylab("Suicide Rate") +
+  ggtitle("No Year-Related Reason for the Huge European Suicide Rate") +
+  theme(plot.title = element_text(face="bold", hjust=0.5))
+# To check one more thing, this graph depicts year against suicide rate in Europe; as shown earlier, there is not correlation, although there are a few
+# extra male outliers around the 1990s. A few tragedies such as the death of Princess Diana occurred in 1990s Europe, but there is no actual spike
+
+suicidejoin2 %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of GDP Per Capita Versus Suicide Rate for All Countries") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14)) +
+  labs(caption="-the overall observable association between suicide and GDP is seen here-")
+# Here is a broader look at the same trend found earlier in Europe; a negative
+# correlation between gdp per capita and suicide rate, which is especially 
+# prominent for males
+
+sex_data %>% ggplot(aes(x=gdp_per_capita, y=suicide_per_100k)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) +
+  xlab("GDP per Captia") +
+  ylab("Suicide Rate") +
+  ggtitle("The Same Sex Difference But a Clearer View of the Real Relationship Between GDP and Suicide")
+# Here is the sex difference again shown from an aggregated dataset, which gives an
+# interesting view of the GDP/suicide rate relationship; that is, the negative
+# association seen in the larger dataset might be due to overplotting or something 
+# else rather than a correlation
+
+region_data %>% ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
+  geom_jitter(aes(color=continent), alpha=0.5) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("The Americas are an Outlier in the Relationship Between GDP and Suicide") +
+  theme(plot.title = element_text(face="bold", hjust=0.5))
+# Just for a little extra kick, here is a graph of gdp vs. suicide rate
+# aggregated by continent; it seems like the suicide rate in the Americas
+# is unique in that it doesn't correlate with gdp, so let's remove it
+
+region_data %>% filter(continent!="Americas") %>% 
+  ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
+  geom_jitter(aes(color=continent), alpha=0.5) +
+  geom_smooth() +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of GDP Per Capita Versus Suicide Rate for Continents Excluding the Americas") +
+  scale_color_brewer(palette="Set2", name="Continent",
+                     labels=c("Europe", "Other")) +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14))
+# After removing the Americas, Europe and other continents seem to have suicide
+# rates that follow an overall visual negative correlation with gdp
+
+suicidejoin2 %>% rename(suicide_rate = "suicides/100k pop") -> suicidejoin2
+# variable renamed for efficiency
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
+  geom_point(aes(color=sex)) +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2)) +
+  facet_grid(~sex) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Faceted Model of GDP Versus Suicide Rate With a Quadratic Function") +
+  theme_light() +
+  labs(caption="-quadratic model is showing the relationship between GDP and suicide-") +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14))
+# Let's debunk the trends previously seen in predicting suicide rate from gdp;
+# this graph, faceted by sex and with a quadratic equation fitting the prediction
+# of suicide rate from gdp, shows that the correlation might not be what it 
+# visually appears to be; this will be explored with simple regression models, 
+# but it could also be affected by the deviating correlation between American 
+# suicides and gdp or the astoundingly high rates of suicide in Europe
+
+
+# From these plots, it seems as though Europe has a much higher suicide rate that other
+# continents over the years, and that GDP per capita might negatively predict suicide
+# rate in both sexes; however, the last couple of graphs seem to give evidence 
+# against this assertion. Another large trend in this data is that male suicide
+# rate is remarkably and reliably higher across all plots.
