@@ -99,3 +99,44 @@ region_data <- yearly_data %>%
   mutate(suicide_rate = (suicides_no/population*100000),
          gdp_per_capita = (gdp/population))
 
+#-------Addition of Gender Datasets from World Bank--------
+
+# column of female unemployment
+gender3 <- read_csv("unemployment.csv")
+gender3 %>% select(-'Series Code', -'Country Code') -> gender3
+gender3 %>% pivot_longer(cols=contains("["), names_to="year", values_to="count") -> gender3
+gender3 %>% rename(female_unemployment = "count", country = "Country Name") %>% select(-'Series Name') -> gender3
+gender3$year <- substr(gender3$year, start=1, stop=4)
+gender3$year <- as.integer(gender3$year)
+gender3 %>% select(-country) -> gender3_1
+full_join(suicidedataclean, gender3) -> suicidedataclean2
+suicidedataclean2$female_unemployment <- substr(suicidedataclean2$female_unemployment, start=1, stop=4)
+(suicidedataclean2 %>% replace_with_na(replace=list(female_unemployment = "..")) -> suicidedataclean2)
+
+# column of male unemployment
+gender4 <- read_csv("male_unem.csv")
+gender4 %>% select(-'Series Code', -'Country Code') -> gender4
+gender4 %>% pivot_longer(cols=contains("["), names_to="year", values_to="count") -> gender4
+gender4 %>% rename(male_unemployment = "count", country = "Country Name") %>% select(-'Series Name') -> gender4
+gender4$year <- substr(gender4$year, start=1, stop=4)
+gender4$year <- as.integer(gender4$year)
+full_join(suicidedataclean, gender4) -> suicidedataclean3
+suicidedataclean3$male_unemployment <- substr(suicidedataclean3$male_unemployment, start=1, stop=4)
+(suicidedataclean3 %>% replace_with_na(replace=list(male_unemployment = "..")) -> suicidedataclean3)
+
+# column of male infant mortality rate (deaths per 1000 infant males)
+gender5 <- read_csv("deaths.csv")
+gender5 %>% select(-'Series Code', -'Country Code') -> gender5
+gender5 %>% pivot_longer(cols=contains("["), names_to="year", values_to="count") -> gender5
+gender5 %>% rename(infant_deaths_per_1000_male = "count", country = "Country Name") %>% select(-'Series Name') -> gender5
+gender5$year <- substr(gender5$year, start=1, stop=4)
+gender5$year <- as.integer(gender5$year)
+full_join(suicidedataclean, gender5) -> suicidedataclean4
+(suicidedataclean4 %>% replace_with_na(replace=list(infant_deaths_per_1000_male = "..")) -> suicidedataclean4)
+
+# male and female unemployment datasets joined
+full_join(suicidedataclean2, suicidedataclean3) -> suicidejoin1
+
+# male and female unemployment and infant mortality (male) datasets joined into a final product
+full_join(suicidejoin1, suicidedataclean4) -> suicidejoin2
+
