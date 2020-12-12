@@ -124,14 +124,14 @@ ggplot(gen_data, aes(x=year, y=suicide_per_100k, color=generation))+
 
 ggplot(gen_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=generation))+
   geom_point()+
-  labs(title="Worldwide Suicide Death Rates by Generation from 1985-2016",
+  labs(title="Worldwide Suicide Death Rates by Generation \nfrom 1985-2016",
        x="GDP", y="Suicides per 100k people") 
 #GI gen tend to have lower GDP per capita
 #Younger gens with higher GDP have highest suicide rates (likely b/c economic development rather than gdp really having an effect)
 ggplot(gen_data, aes(x=year,y=gdp_per_capita, color=generation))+
   geom_jitter(alpha=0.5)+
   geom_smooth(se=FALSE)+ #remove confidence interval
-  labs(title="Worldwide Suicide Death Rates by Generation from 1985-2016",
+  labs(title="GDP per capita by Generation from 1985-2016",
        x="Year", y="GDP per Capita")
 #Consistent increase among all generations; rule out gdp impact on age and generation over time
 
@@ -148,12 +148,16 @@ gen_sex_data <- left_join(data1, data2) %>%
   mutate("suicide_per_100k" = suicides_no/population*100000)
 ggplot(gen_sex_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=generation))+
   geom_point()+
-  #geom_line()+
-  facet_grid(sex~., scales="free")
+  facet_grid(sex~., scales="free")+
+  labs(title="Worldwide Suicide Death Rates by Age and Sex from 1985-2016",
+       x="Year", y="Suicides per 100k people")
 ggplot(gen_sex_data, aes(x=year, y=suicide_per_100k, color=generation))+
   geom_point()+
   geom_line()+
-  facet_grid(sex~., scales = "free")
+  facet_grid(sex~., scales = "free")+
+  labs(title="Worldwide Suicide Death Rates by Generation and Sex from 1985-2016",
+       x="Year", y="Suicides per 100k people")
+  
 #Gender seems to play a role in age/generation
 
 #----------Effect of continent on age and generation graphs-------------------
@@ -168,7 +172,9 @@ continent_age <- suicidedataclean %>%
 ggplot(continent_age, aes(x=year, y=suicide_per_100k, color=age))+
   geom_point()+
   geom_line()+
-  facet_grid(continent~.,scales="free")
+  facet_grid(continent~.,scales="free")+
+  labs(title="Worldwide Suicide Death Rates by Age and Continent \nfrom 1985-2016",
+       x="Year", y="Suicides per 100k people")
 #Europe has signifigantly more deaths
 ggplot(continent_age, aes(x=year, y=suicide_per_100k, color=continent))+
   geom_point()+
@@ -196,7 +202,7 @@ suimod1 <- pred_data%>%
   add_residuals(mod1)
 ggplot(suimod1, aes(x= suicide_per_100k,y=pred))+
   geom_point()+
-  geom_point(aes(y=pred), color = "red", alpha=.3)
+  geom_line(aes(y=pred), color = "red", alpha=.2)
 ggplot(suimod1, aes(x=resid))+
   geom_freqpoly() #residuals plotted show that model overpredicts suicide rate
 #Use age, year,  and continent
@@ -224,3 +230,31 @@ ggplot(suimod4, aes(x=resid))+
   geom_freqpoly() #best model based on residuals
 suimod4a<- suimod4 %>%
   filter(resid >= 20 | resid <=-20)
+mod5 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+sex, data=.)
+suimod5 <- pred_data %>%
+  add_predictions(mod5) %>%
+  add_residuals(mod5)
+ggplot(suimod5, aes(x=resid))+
+  geom_freqpoly() #best model based on residuals
+modage <- pred_data %>%
+  lm(suicide_per_100k~age, data=.)
+suimod6 <- pred_data %>%
+  add_predictions(modage) %>%
+  add_residuals(modage)
+ggplot(suimod6, aes(x=resid))+
+  geom_freqpoly()
+modcon <- pred_data %>% 
+  lm(suicide_per_100k~continent, data=.)#poor predictor by itself
+suimod7<- pred_data %>% 
+  add_predictions(modcon) %>% 
+  add_residuals(modcon)
+ggplot(suimod7, aes(x=resid))+
+  geom_freqpoly()
+modsex<- pred_data %>% 
+  lm(suicide_per_100k~sex, data=.) #poor predictor by itself
+suimod8 <-  pred_data %>% 
+  add_predictions(modsex) %>% 
+  add_residuals(modsex)
+ggplot(suimod8, aes(x=resid))+
+  geom_freqpoly() 
