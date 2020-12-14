@@ -15,7 +15,7 @@ output: pdf_document
   
     By analyzing the “Suicide Rates” dataset, our research aims to answer the question, “What demographic and economic factors drive national and global suicide rates, specifically in terms of gender, generation, and GDP per capita levels?” After creating graphical representations and linear regression models of suicide rates with the stated factors above, our results support previous literature which also examines the extent that demographic and economic factors predict national and global suicide rates. 
 
-#Method
+##Method
 
     Prior to starting exploratory data analysis, the dataset was screened to remove outliers for years (having too little observations compared to other years) and countries with no suicide numbers. After these observations were removed, the gapminder package, which contains country names and their respective continents, was added to the cleaned suicide dataset. Afterwards, applicable data frames were created for our exploratory analysis using the aggregate and left_join functions (see Appendix).
 
