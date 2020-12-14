@@ -5,7 +5,7 @@ date: "12/14/2020"
 output: pdf_document
 ---
 
-#Introduction
+##Introduction
 
     Suicide is an increasing public health concern and represents a major societal and health care problem (Bachmann, 2018). The World Health Organization (WHO) estimates that one person dies by suicide every 40 seconds which cummulates to 800,000 suicides annually (Suicide Data, n.d.). Globally, 85% of the world’s suicide rates occur in low- and middle- income countries (Khazaei et al., 2017) and alarmingly, the global suicide rate has increased by 60% over the last 45 years (Suicide Data, n.d.).
   
