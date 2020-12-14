@@ -193,7 +193,7 @@ ggplot(yearly_data)+
 #and all the countries with low GDP and low suicides are relatively small
 ```
 
-    Our final model in Figure 4 shows that incorporated education spending data and unemployment rate predicted that suicides had a negative relationship with average GDP per capita and a positive relationship with both unemployment and education spending. We found that education spending was significant at the .001 % level and average gdp was significant at the 10% level. Although unemployment showed a positive trend, it was not significant. These data are likely skewed because smaller countries are weighted equally to larger ones. In the model, every country is plotted regardless of population. The effect of population is not showed in the model. 
+    Our final model in Figure 4 shows that incorporated education spending data and unemployment rate predicted that suicides had a negative relationship with average GDP per capita and a positive relationship with both unemployment and education spending. We found that education spending was significant at the .001 % level and average gdp was significant at the 10% level. Although unemployment showed a positive trend, it was not significant. These data are likely skewed because smaller countries are weighted equally to larger ones. In the model, every country is plotted regardless of population. The effect of population is not showed in the model.
     
 ```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}   
 #adding in data from the world bank development indicators 
