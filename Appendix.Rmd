@@ -477,6 +477,11 @@ summary(model2)
 # When comparing the aggregated and non-aggregated data, male sex and gdp per 
 # capita predict suicide rate, but the interaction between them does not
 
+suicide_exp %>% add_predictions(model2, var="pred2") %>% add_residuals(model2, var="resid2") -> suicide_exp
+suicide_exp %>% ggplot(aes(resid2)) +
+  geom_freqpoly(binwidth=0.5)
+# A residuals plot of the model made from aggregated data shows a much cleaner distribution of residuals
+
 
 # Model 4: Exploring sex differences in Europe
 aggregate(suicide_exp$suicide_rate, by=list(year=suicide_exp$year, continent=suicide_exp$continent, sex=suicide_exp$sex, gdp=suicide_exp$gdp_per_capita),FUN=sum) %>%
