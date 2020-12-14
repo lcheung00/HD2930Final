@@ -1,0 +1,260 @@
+#-------Read Data--------
+library(tidyverse)
+suicidedata <- read_csv("master.csv") #make sure your working directory is to folder with master.csv
+
+
+#-------Exploring Outliers/Errors in Suicide Data---------
+suicidedata %>% 
+  count(year) #remove 2016 with very low numbers (<200) <- outliers (found from raw suicide count)
+suicidedata %>% 
+  group_by(country) %>% 
+  summarise(sum(suicides_no)) %>% 
+  filter(`sum(suicides_no)`==0) #Dominica & Saint Kitts and Nevis have 0 over years (remove) <- outliers
+str(suicidedata) #also change gdp to integer (from character)
+
+#-------Cleaning Kaggle Suicide Data---------
+suicidedataclean <- suicidedata %>% 
+  select(-`country-year`) %>% #Remove country.year (redundant)
+  filter(year!=2016,
+         country!="Dominica",
+         country!="Saint Kitts and Nevis") %>% 
+  rename(gdp_year=`gdp_for_year ($)`,
+         gdp_per_capita=`gdp_per_capita ($)`)
+
+#-------Adding Other Datasets to Suicide Data----------
+#Adding Continent Column#
+library(gapminder)
+countryregion <- gapminder %>% 
+  group_by(country, continent) %>% 
+  count() %>% 
+  select(country,continent) #get all countries
+suicidedataclean <- merge(suicidedataclean, countryregion) #assign continent value
+
+#-------Creating Usable DataSets from Cleaned Data--------
+
+#yearly_data: aggregated by country, year
+aggregate(suicidedataclean$suicides_no, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+yearly_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+
+#sex_data: aggregated by year, sex
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, sex=suicidedataclean$sex),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,sex=suicidedataclean$sex), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,sex=suicidedataclean$sex), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+sex_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+
+#age_data:aggregated by year, age
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, age=suicidedataclean$age),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,age=suicidedataclean$age), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,age=suicidedataclean$age), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+age_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+
+#generation_data: aggregated by year, generation
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, generation=suicidedataclean$generation),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+gen_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+
+#region_data: aggregated by year, world region
+country_per_continent <- yearly_data %>% 
+  group_by(continent, year) %>%
+  count(continent) #low numbers in Oceania & Africa & Asia -> group then together
+View(country_per_continent)
+region_data <- yearly_data %>% 
+  select(year, suicides_no, population, gdp, continent) %>% 
+  mutate(continent = fct_lump(continent, n=2)) %>% 
+  group_by(continent, year) %>% 
+  summarise(sum(suicides_no),sum(population), sum(gdp)) %>% 
+  rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp)`) %>% 
+  mutate(suicide_rate = (suicides_no/population*100000),
+         gdp_per_capita = (gdp/population))
+
+
+#-------Age Graphs--------
+ggplot(age_data, aes(x=year, y=suicide_per_100k, color=age))+
+  geom_line()+ 
+  geom_point()+
+  labs(title="Worldwide Suicide Death Rates by Age Group from 1985-2016",
+       x="Year", y="Suicides per 100k people") 
+#highest among 75+ and then decreasing over time (slight rise in 15-24 year olds)
+
+ggplot(age_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=age))+
+  #geom_line()+ #Oddly, 2016 had very low number of data, but the rate remains consistent
+  geom_point()+
+  labs(title="Worldwide Suicide Death Rates by Age Group & GDP per Capita",
+       x="GDP per Capita", y="Suicides per 100k people") 
+#decreasing rate of suicide by GDP but still the highest among older ages
+#GDP has a greater impact on suicide rates for older adults than younger (slope of line)
+#inflection point at 15000 GDP per capita
+#highly similar to pure age and suicide rates graph
+#--------Generation Graphs---------
+ggplot(gen_data, aes(x=year, y=suicide_per_100k, color=generation))+
+  geom_line()+ #Oddly, 2016 had very low number of data, but the rate remains consistent
+  geom_point()+
+  labs(title="Worldwide Suicide Death Rates by Generation from 1985-2016",
+       x="Year", y="Suicides per 100k people")
+#Also GI generation has decreasing number of worldwide suicide deaths as they age
+#All other groups are increasing (contradicting age graph) but still lower than oldest group
+#Order: GI, Silent, Boomer, Gen X, Mil, Gen Z
+
+ggplot(gen_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=generation))+
+  geom_point()+
+  labs(title="Worldwide Suicide Death Rates by Generation \nfrom 1985-2016",
+       x="GDP", y="Suicides per 100k people") 
+#GI gen tend to have lower GDP per capita
+#Younger gens with higher GDP have highest suicide rates (likely b/c economic development rather than gdp really having an effect)
+ggplot(gen_data, aes(x=year,y=gdp_per_capita, color=generation))+
+  geom_jitter(alpha=0.5)+
+  geom_smooth(se=FALSE)+ #remove confidence interval
+  labs(title="GDP per capita by Generation from 1985-2016",
+       x="Year", y="GDP per Capita")
+#Consistent increase among all generations; rule out gdp impact on age and generation over time
+
+#---------Sex and Generation Graph----------
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, generation=suicidedataclean$generation, sex=suicidedataclean$sex),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation, sex=suicidedataclean$sex), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation, sex=suicidedataclean$sex), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+gen_sex_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+ggplot(gen_sex_data, aes(x=gdp_per_capita, y=suicide_per_100k, color=generation))+
+  geom_point()+
+  facet_grid(sex~., scales="free")+
+  labs(title="Worldwide Suicide Death Rates by Age and Sex from 1985-2016",
+       x="Year", y="Suicides per 100k people")
+ggplot(gen_sex_data, aes(x=year, y=suicide_per_100k, color=generation))+
+  geom_point()+
+  geom_line()+
+  facet_grid(sex~., scales = "free")+
+  labs(title="Worldwide Suicide Death Rates by Generation and Sex from 1985-2016",
+       x="Year", y="Suicides per 100k people")
+  
+#Gender seems to play a role in age/generation
+
+#----------Effect of continent on age and generation graphs-------------------
+continent_age <- suicidedataclean %>% 
+  select(year, age, suicides_no, population, gdp_year, continent) %>% 
+  mutate(continent = fct_lump(continent, n=2)) %>% 
+  group_by(continent, year, age) %>% 
+  summarise(sum(suicides_no),sum(population), sum(gdp_year)) %>% 
+  rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp_year)`) %>% 
+  mutate(suicide_per_100k = (suicides_no/population*100000),
+         gdp_per_capita = (gdp/population))
+ggplot(continent_age, aes(x=year, y=suicide_per_100k, color=age))+
+  geom_point()+
+  geom_line()+
+  facet_grid(continent~.,scales="free")+
+  labs(title="Worldwide Suicide Death Rates by Age and Continent \nfrom 1985-2016",
+       x="Year", y="Suicides per 100k people")
+#Europe has signifigantly more deaths
+ggplot(continent_age, aes(x=year, y=suicide_per_100k, color=continent))+
+  geom_point()+
+  geom_line()+
+  facet_grid(age~., scales="free")
+
+#----------Models Using Variables Age, Generation, Year, and Sex------
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+pred_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+library(modelr)
+mod1 <- pred_data %>%
+  lm(suicide_per_100k~age+generation+year+continent+sex, data=.)
+summary(mod1)
+#predictive model indicates that age, year, and continent have the most significance
+suimod1 <- pred_data%>%
+  add_predictions(mod1) %>%
+  add_residuals(mod1)
+ggplot(suimod1, aes(x= suicide_per_100k,y=pred))+
+  geom_point()+
+  geom_line(aes(y=pred), color = "red", alpha=.2)
+ggplot(suimod1, aes(x=resid))+
+  geom_freqpoly() #residuals plotted show that model overpredicts suicide rate
+#Use age, year,  and continent
+mod2 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+year, data=.)
+suimod2 <- pred_data %>%
+  add_predictions(mod2) %>%
+  add_residuals(mod2)
+ggplot(suimod2, aes(x=resid))+
+  geom_freqpoly()
+summary(mod2)
+mod3 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+year+sex, data=.)
+suimod3 <- pred_data %>%
+  add_predictions(mod3) %>%
+  add_residuals(mod3)
+ggplot(suimod3, aes(x=resid))+
+  geom_freqpoly()
+mod4 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+generation+sex, data=.)
+suimod4 <- pred_data %>%
+  add_predictions(mod4) %>%
+  add_residuals(mod4)
+ggplot(suimod4, aes(x=resid))+
+  geom_freqpoly() #best model based on residuals
+suimod4a<- suimod4 %>%
+  filter(resid >= 20 | resid <=-20)
+mod5 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+sex, data=.)
+suimod5 <- pred_data %>%
+  add_predictions(mod5) %>%
+  add_residuals(mod5)
+ggplot(suimod5, aes(x=resid))+
+  geom_freqpoly() #best model based on residuals
+modage <- pred_data %>%
+  lm(suicide_per_100k~age, data=.)
+suimod6 <- pred_data %>%
+  add_predictions(modage) %>%
+  add_residuals(modage)
+ggplot(suimod6, aes(x=resid))+
+  geom_freqpoly()
+modcon <- pred_data %>% 
+  lm(suicide_per_100k~continent, data=.)#poor predictor by itself
+suimod7<- pred_data %>% 
+  add_predictions(modcon) %>% 
+  add_residuals(modcon)
+ggplot(suimod7, aes(x=resid))+
+  geom_freqpoly()
+modsex<- pred_data %>% 
+  lm(suicide_per_100k~sex, data=.) #poor predictor by itself
+suimod8 <-  pred_data %>% 
+  add_predictions(modsex) %>% 
+  add_residuals(modsex)
+ggplot(suimod8, aes(x=resid))+
+  geom_freqpoly() 
