@@ -1,0 +1,1011 @@
+---
+title: "Suicide Prevention: Determining Demographic and Economic Factors that Predict Global and National Suicide Rates"
+author: "Braimon, Cabaero, Cheung, Kravitz, Yuen"
+date: "12/14/2020"
+output: pdf_document
+---
+
+#Introduction
+
+    Suicide is an increasing public health concern and represents a major societal and health care problem (Bachmann, 2018). The World Health Organization (WHO) estimates that one person dies by suicide every 40 seconds which cummulates to 800,000 suicides annually (Suicide Data, n.d.). Globally, 85% of the world’s suicide rates occur in low- and middle- income countries (Khazaei et al., 2017) and alarmingly, the global suicide rate has increased by 60% over the last 45 years (Suicide Data, n.d.).
+  
+    Seeing the disconcerting prevalence of suicide, it is imperative to identify factors that contribute and/or predict suicide rates in all populations around the world. It has been suggested that demographic (eg. gender and cohort/generational groups) and economic (eg. gross national product (GDP) and unemployment) factors may reveal trends in suicide rates. An implication of determining such trends and identifying factors that contribute to suicide would be the implementation of regional, national, and global policies to help reduce suicide rates. 
+    
+    To find key determinants of suicide rates among different populations globally, we obtained an aggregated dataset from Kaggle. The “Suicide Rates” dataset was complied from four notable datasets: WHO Suicide Rates in the 21st Century, WHO Suicide Prevention data, United Nations Human Development Index (HDI), and the World Bank: World Development Indicators. The compiled dataset contains data on population, suicide rates per 100,000 inhabaitants, HDI, GDP for different genders and ages/generations in different countries each year (eg. the suicide rates for males aged 15-24 in Albania in 1987). 
+    
+    By analyzing the “Suicide Rates” dataset, our research aims to answer the question, “What demographic and economic factors drive national and global suicide rates, specifically in terms of gender, generation, and GDP per capita levels?” After creating graphical representations and linear regression models of suicide rates with the stated factors above, our results support previous literature which also examines the extent that demographic and economic factors predict national and global suicide rates.
+
+#Method
+
+    Prior to starting exploratory data analysis, the dataset was screened to remove outliers for years (having too little observations compared to other years) and countries with no suicide numbers. After these observations were removed, the gapminder package, which contains country names and their respective continents, was added to the cleaned suicide dataset. Afterwards, applicable data frames were created for our exploratory analysis using the aggregate and left_join functions (see Appendix).
+
+    We began our exploration of the impact of economic variables by aggregating the gender and age separated data into yearly groups. Then, we plotted the suicide rate by country over time. Observing an outlier, we dove deeper into Lithuania and its suicide rate compared to GDP per capita and the worldwide suicide rate compared to gdp per capita. This led to our first model. With this information, we built a simple linear model based on GDP per capita and a quadratic regression using gdp per capita. Because these did not accurately reflect the data, we incorporated world bank unemployment and education spending data into our dataset. Then we built a model using GDP per capita, unemployment rate and percent of GDP spent on education.
+    
+    Next, we moved to the demographic variable of sex, to see whether economic features interact with sex to predict suicide. We plotted the suicide rate by GDP per capita, differentiating between sex, to find a correlation or any sex differences. Then, we plotted suicide rate by continent differentiating between sex. Observing outliers in Europe, we built simple linear models to identify any interactions of the GDP per capita with sex to predict suicide. Then, we built a model using only sex as predictor to compare.
+    
+    Focusing on the last demographic variables provided by the dataset, age and generation, a dataframe aggregating the suicide dataset by year and age was created. A line plot was created to understand the relationship between suicide rate and age group over time. Additionally, scatter plots were created to understand the potential economic, location, and sex impact on suicide rates by age group. These visualization steps were repeated for a dataframe aggregating the suicide dataset by year and generation. From the results of this exploratory analysis, predictive linear models were created to understand whether generation and/or age are reliable predictors of suicide risks and whether sex or location interacts with this model.
+
+
+
+#Results
+
+    Suicide rates have remained relatively consistent over time with no clear visual trends. As shown in Figure 1a, there seemed to be a general downward trend between gdp and suicide rates and while Lithuania’s data clearly showed this (Figure 1b) , the general linear model showed an increase of suicide rates with GDP per capita (Figure 2).
+
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+library(tidyverse)
+library(modelr)
+library(ggplot2)
+library(dplyr)
+library(naniar)
+suicidedata <- read_csv("master.csv") #make sure your working directory is to folder with master.csv
+#-------Exploring Outliers/Errors in Suicide Data---------
+#-------Cleaning Kaggle Suicide Data---------
+suicidedataclean <- suicidedata %>% 
+  select(-`country-year`) %>% #Remove country.year (redundant)
+  filter(year!=2016,
+         country!="Dominica",
+         country!="Saint Kitts and Nevis") %>% 
+  rename(gdp_year=`gdp_for_year ($)`,
+         gdp_per_capita=`gdp_per_capita ($)`)
+suicidedataclean$gdp_year <- as.integer(suicidedataclean$gdp_year)
+suicidedataclean$gdp_per_capita <- as.integer(suicidedataclean$gdp_per_capita)
+#-------Creating Usable DataSets from Cleaned Data--------
+#yearly_data: aggregated by country, year; gender and age into yearly groups 
+aggregate(suicidedataclean$suicides_no, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+yearly_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#-------Adding Other Datasets to Suicide Data----------
+#Adding Continent Column#
+library(gapminder)
+countryregion <- gapminder %>% 
+  group_by(country, continent) %>% 
+  count() %>% 
+  select(country,continent) #get all countries
+suicidedataclean <- merge(suicidedataclean, countryregion) #assign continent value
+#yearly_data: aggregated by country, year, continent
+aggregate(suicidedataclean$suicides_no, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+yearly_data_2 <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#sex_data: aggregated by year, sex
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, sex=suicidedataclean$sex),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,sex=suicidedataclean$sex), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,sex=suicidedataclean$sex), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+sex_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#age_data:aggregated by year, age
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, age=suicidedataclean$age),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,age=suicidedataclean$age), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,age=suicidedataclean$age), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+age_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#generation_data: aggregated by year, generation
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, generation=suicidedataclean$generation),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+gen_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#region_data: aggregated by year, world region
+country_per_continent <- yearly_data_2 %>% 
+  group_by(continent, year) %>%
+  count(continent) #low numbers in Oceania & Africa & Asia -> group then together
+region_data <- yearly_data_2 %>% 
+  select(year, suicides_no, population, gdp, continent) %>% 
+  mutate(continent = fct_lump(continent, n=2)) %>% 
+  group_by(continent, year) %>% 
+  summarise(sum(suicides_no),sum(population), sum(gdp)) %>% 
+  rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp)`) %>% 
+  mutate(suicide_rate = (suicides_no/population*100000),
+         gdp_per_capita = (gdp/population))
+yearly_data %>% 
+  ggplot(aes(x = year, y =suicide_per_100k)) +
+  stat_bin_hex()+
+  scale_fill_gradient(low= "lightblue", high = "darkblue")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "Year")+
+  ggtitle("Suicide Rates over Time")+
+  labs(caption='Figure 3')
+#One country has extremely high suicide rates in a few years
+#That country is Lithuania and the years are after the breakup of the soviet union
+#figure 1a
+yearly_data %>% 
+  ggplot(aes(x = gdp_per_capita, y = suicide_per_100k)) +
+  stat_bin_hex()+
+  scale_fill_gradient(low= "lightblue", high = "darkblue")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita vs Suicide Rates")+
+  labs(caption='Figure 1a')
+#plotting the world's suicide rates vs gdp per capita
+#figure 1b
+yearly_data %>% 
+  filter(country == "Lithuania") %>% 
+  ggplot(aes(x = gdp_per_capita, y = suicide_per_100k)) +
+  geom_point()+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("Lithuania GDP vs Suicide Rates")+
+  labs(caption='Figure 1b')
+#Plotting Lituania's GDP vs suicide rates
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita, data = .)->yearly_model
+#seeing if gdp per capita predicts suicide rates
+yearly_data %>% 
+  add_predictions(yearly_model) %>% add_residuals(yearly_model)->yearly_data
+#figure 2
+ggplot(yearly_data)+
+  geom_point(aes(x = gdp_per_capita, y = suicide_per_100k))+
+  geom_line(aes(x = gdp_per_capita, y = pred), color = "orange")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita Linear Model")
+#seeing if gdp per capita predicts suicide rates
+#the model goes the opposite direction of our expectation
+```
+    
+    
+    According to the quadratic model shown in Figure 3, GDP per capita is shown to increase to a point, then a downward trend. Modeling GDP as a quadratic terms showed an increase in suicide rates at first followed by a decrease as countries got even wealthier. We built a quadratic model thinking that there could be an association between suicide rates and development as countries industrialize. 
+
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita + I(gdp_per_capita^2), data = .)->yearly_model2
+#model with beta squared interaction
+yearly_data %>% 
+  add_predictions(yearly_model2) %>% add_residuals(yearly_model2)->yearly_data
+#Figure 3
+ggplot(yearly_data)+
+  geom_point(aes(x = gdp_per_capita, y = suicide_per_100k))+
+  geom_line(aes(x = gdp_per_capita, y = pred), color = "orange")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita Quadratic Model")+
+  labs(caption='Figure 3')
+#seeing if adding a quadratic factor improves the validity of the model. It is better but there are some issues
+#We need some way to weight the points based on population. the countries with the highest GDP per capita are the largest
+#and all the countries with low GDP and low suicides are relatively small
+```
+
+    Our final model in Figure 4 shows that incorporated education spending data and unemployment rate predicted that suicides had a negative relationship with average GDP per capita and a positive relationship with both unemployment and education spending. We found that education spending was significant at the .001 % level and average gdp was significant at the 10% level. Although unemployment showed a positive trend, it was not significant. These data are likely skewed because smaller countries are weighted equally to larger ones. In the model, every country is plotted regardless of population. The effect of population is not showed in the model. 
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}   
+#adding in data from the world bank development indicators 
+read_csv("Education Spending Data.csv") -> Education_Spending_Data 
+read_csv("Unemployment Data.csv") -> Unemployment_Data
+Education_Spending_Data %>% 
+  mutate(across('1987':'2015', as.numeric))->Education_Spending_Data
+Education_Spending_Data %>%    
+  pivot_longer(!'Country Name', names_to = "year", values_to = "Education Spending") ->education
+education %>% 
+  mutate(across(year, as.integer)) %>% 
+  rename(country = `Country Name`) ->education
+left_join(yearly_data, education) ->yearly_data
+Unemployment_Data %>% 
+  mutate(across('1987':'2015', as.numeric))->Unemployment_Data
+Unemployment_Data %>%     
+  pivot_longer(!'Country Name', names_to = "year", values_to = "Unemployment Rate") ->unemployment
+unemployment %>% 
+  mutate(across(year, as.integer)) %>% 
+  rename(country = `Country Name`) ->unemployment
+left_join(yearly_data, unemployment) ->yearly_data
+#model using world bank data
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita + `Unemployment Rate` + `Education Spending`, data = .)->yearly_model3
+yearly_data %>% 
+  add_predictions(yearly_model3) %>% add_residuals(yearly_model3)->yearly_data
+summary(yearly_model3)
+```
+
+    In Figure 5, a negative correlation emerged between GDP per capita and suicide in all countries.
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+#-------Exploring the Data for Gender Interactions with More Aggregated Datasets and then Graphing some Relationships--------
+suicidedataclean -> suicidejoin2
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of GDP Per Capita Versus Suicide Rate for All Countries") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14)) +
+  labs(caption="-the overall observable association between suicide and GDP is seen here-")
+# Here is a broader look at the same trend found earlier in Europe; a negative
+# correlation between gdp per capita and suicide rate, which is especially 
+# prominent for males
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=continent, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("Continent") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of Continent Versus Suicide Rate") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14))
+# Modeling suicides by continent, it seems that Europe has by far the highest suicide rate
+suicidejoin2 %>% filter(continent=="Europe") -> europesuicide
+europesuicide %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of GDP Per Capita Versus Suicide Rate for European Countries") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14)) +
+  labs(caption="-there is an observable negative correlation between GDP and suicide-")
+# Zooming in on Europe, we see a general negative correlation between gdp per 
+# capita and suicide rate, with dramatic sex differences in suicide
+# rates but the same general trend for both sexes; however, this might be due more
+# to outliers than an actual effect 
+```
+   
+    Looking at Figure ___ and Figure ___ , we found that the male suicide rate is also higher both across and within continents. We found that suicide rates by continent were the highest in Europe. 
+    
+
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+suicidejoin2 %>% ggplot(aes(x=sex, y=`suicides/100k pop`)) +
+  geom_violin(aes(fill=sex)) +
+  xlab("Sex") +
+  ylab("Suicide Rate") +
+  ggtitle("Large Sex Differences in Suicide Rate Distribution") +
+  theme(plot.title = element_text(face="bold", hjust=0.5))
+# huge sex diff in international data 
+europesuicide %>% ggplot(aes(x=sex, y=`suicides/100k pop`)) +
+  geom_violin(aes(fill=sex)) +
+  xlab("Sex") +
+  ylab("Suicide Rate") +
+  ggtitle("Violin Plot Shows Large Sex Differences in Suicide Rate Distribution") +
+  theme(plot.title = element_text(face="bold", hjust=0.5))
+# A violin plot of this sex difference shows that female suicide rates are much lower and also have a much shorter tail of outliers
+#international, european sex difference
+```
+
+    However, according to Figure ___, using a faceted graph with a quadratic model we found that GDP may seem as a negative predictor because of overplotting or the highly variable suicide rate trends across continents. 
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+suicidejoin2 %>% rename(suicide_rate = "suicides/100k pop") -> suicidejoin2
+# variable renamed for efficiency
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
+  geom_point(aes(color=sex)) +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2)) +
+  facet_grid(~sex) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Faceted Model of GDP Versus Suicide Rate With a Quadratic Function") +
+  theme_light() +
+  labs(caption="-quadratic model is showing the relationship between GDP and suicide-") +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14))
+# This graph, faceted by sex and with a quadratic equation fitting the prediction
+# of suicide rate from gdp, shows that the correlation might not be what it 
+# visually appears to be; this will be explored with simple regression models, 
+# but it could also be affected by the astoundingly high rates of suicide in Europe
+```
+    
+    Using linear regression models to assess the validity of these observations, our main finding was that, across all models, male sex was the most significant and consistent predictor of suicide rates (at the 0.0001 level). 
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+suicidedataclean -> suicidejoin2
+suicidejoin2 %>% rename(suicide_rate = "suicides/100k pop") -> suicide_exp 
+# The suicide rate variable has been renamed and a new dataset loaded to differentiate model code
+# Model 1: predicting suicide rate from sex and gdp per capita
+lm(suicide_rate ~ sex +
+     gdp_per_capita +
+     sex*gdp_per_capita, data=suicide_exp) -> model1
+summary(model1)
+# A summary of this model finds that male sex, gdp per capita, and the interaction
+# between these two variables are all significant predictors of suicide rate,
+# which corroborates the previous graphs of a correlation
+# Model 2: predicting suicide rate from sex and gdp per capita in aggregated data
+lm(suicide_per_100k ~ sex +
+     gdp_per_capita +
+     sex*gdp_per_capita, data=sex_data) -> model2
+summary(model2)
+# When comparing the aggregated and non-aggregated data, male sex and gdp per 
+# capita predict suicide rate, but the interaction between them does not
+```
+    
+    GDP per capita did also end up being a significant predictor across the entire dataset (at the 0.0001 level), but was not significant in models isolating Europe 
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+# Model 4: Exploring sex differences in Europe
+aggregate(suicide_exp$suicide_rate, by=list(year=suicide_exp$year, continent=suicide_exp$continent, sex=suicide_exp$sex, gdp=suicide_exp$gdp_per_capita),FUN=sum) %>%
+  rename(c( "suicide_rate" = "x")) -> sex_continent_data
+sex_continent_data %>% filter(continent=="Europe") -> sex_Euro_data
+# new aggregated dataset
+lm(suicide_rate ~ sex +
+     gdp +
+     sex*gdp, data=sex_Euro_data) -> model4
+summary(model4)
+# Male sex and the interaction between male sex and
+# gdp are significant predictors of suicide in Europe, which is again similar to
+# what was found for the international data 
+```
+    
+    The residuals plots of these models also showed very long tails where the model underpredicted suicide rate, which is consistent with the aforementioned violin plot showing a large number of male outliers. Overall, therefore, it seems from this analysis that being male, having more wealth, and being male with more wealth all significantly predict suicide rates.
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+suicide_exp %>% add_predictions(model1, var="pred1") %>% add_residuals(model1, var="resid1") -> suicide_exp
+suicide_exp %>% ggplot(aes(resid1)) +
+  geom_freqpoly(binwidth=0.5)
+# A plot of the residuals, however, shows that this model vastly underpredicts many
+# observed values, which could be due to the long tail of outliers seen in the sex differences plots
+```
+    From the exploratory data analysis, Figure __ indicated that suicide rates have been decreasing overtime for all age groups and there is a large consistent gap in suicide rate among age groups: suicide rate was highest among oldest age groups and lowest among lower age groups. 
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+ggplot(age_data, aes(x=year, y=suicide_per_100k, color=age))+
+  geom_line()+ 
+  geom_point()+
+  labs(title="Worldwide Suicide Death Rates by Age Group from 1985-2016",
+       x="Year", y="Suicides per 100k people") 
+```
+    
+    Suicide rates are also highest among oldest generations compared to the youngest generations. According to Figure ___, suicide rates by generation over time show a step-wise increase which charts the influence of age on suicide rate. The only exception to this trend is the GI generation which actually decreases suicide rate over time after a peak in suicide rate in 1990. 
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+ggplot(gen_data, aes(x=year, y=suicide_per_100k, color=generation))+
+  geom_line()+ #Oddly, 2016 had very low number of data, but the rate remains consistent
+  geom_point()+
+  labs(title="Worldwide Suicide Death Rates by Generation from 1985-2016",
+       x="Year", y="Suicides per 100k people")
+```
+    To see if economic factors influence suicide rates by age/generation, we charted how GDP per capita changed over time for each generation. Figure __ shows that GDP per capita increased similarly across all generations over time and seems to have no influence on suicide rates for generation groups.
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+ggplot(gen_data, aes(x=year,y=gdp_per_capita, color=generation))+
+  geom_jitter(alpha=0.5)+
+  geom_smooth(se=FALSE)+ #remove confidence interval
+  labs(title="GDP per capita by Generation from 1985-2016",
+       x="Year", y="GDP per Capita")
+```
+    
+    Including the sex variable for suicide rates by age/generation in Figure ___ showed that suicide rate trends vastly differed between males and females. More specifically, compared to our previous analysis of male sex being a strong predictor to suicide rates, we see that sex influences trends in suicide rates by generation differently (for instance, females of the Silent Generation have decreasing suicide rates as they age compared to males of the Silent Generation). 
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, generation=suicidedataclean$generation, sex=suicidedataclean$sex),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation, sex=suicidedataclean$sex), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation, sex=suicidedataclean$sex), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+gen_sex_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+ggplot(gen_sex_data, aes(x=year, y=suicide_per_100k, color=generation))+
+  geom_point()+
+  geom_line()+
+  facet_grid(sex~., scales = "free")+
+  labs(title="Worldwide Suicide Death Rates by Generation and Sex from 1985-2016",
+       x="Year", y="Suicides per 100k people")
+```
+    
+    We also wanted to see whether location influenced suicide rates by age and by generation. To do this, we included the continent variable, which has three categories: Americas, Europe, and Other (a lumped factor of observations from Asia, Oceania, and Africa which had relatively lower number of observations in our dataset). From Figure __, we observed that while suicide death rates are higher in Europe compared to the Americas, suicide death rates by age group are decreasing in Europe whereas they are increasing in the Americas. We could not conclude whether the trends shown in the "Other" continent category were valid since observations in this category were still considerably lower than in the Europe category and Americas category.
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+continent_age <- suicidedataclean %>% 
+  select(year, age, suicides_no, population, gdp_year, continent) %>% 
+  mutate(continent = fct_lump(continent, n=2)) %>% 
+  group_by(continent, year, age) %>% 
+  summarise(sum(suicides_no),sum(population), sum(gdp_year)) %>% 
+  rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp_year)`) %>% 
+  mutate(suicide_per_100k = (suicides_no/population*100000),
+         gdp_per_capita = (gdp/population))
+ggplot(continent_age, aes(x=year, y=suicide_per_100k, color=age))+
+  geom_point()+
+  geom_line()+
+  facet_grid(continent~.,scales="free")+
+  labs(title="Worldwide Suicide Death Rates by Age and Continent \nfrom 1985-2016",
+       x="Year", y="Suicides per 100k people")
+```
+    
+    
+    Based on these visualizations, a new dataset named “pred_data” was created which aggregates suicide rater (per 100k) by year, age, continent, generation, and sex. A predictive model setting all these variables as predictors indicated that age, year, and continent were most significant (<0.0001 level). Creating an additional model incorporating age, sex, year and continent produced predictions that had the smallest residuals. 
+    
+    
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+#Create new dataset using sex, generation, age, continent and year variables
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year, age=suicidedataclean$age, generation=suicidedataclean$generation, sex=suicidedataclean$sex, continent=suicidedataclean$continent), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+pred_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#Model 1 - Use age, generation, year, continent, sex variables
+mod1 <- pred_data %>%
+  lm(suicide_per_100k~age+generation+year+continent+sex, data=.)
+summary(mod1)#summary of model 1
+#predictive model indicates that age, year, and continent have the most significance
+suimod1 <- pred_data%>%
+  add_predictions(mod1) %>%
+  add_residuals(mod1)
+ggplot(suimod1, aes(x=resid))+
+  geom_freqpoly()+
+  labs(title="Residuals Plot of Suicide Rates with Age, \nGeneration, Year, Continent, and Sex as Predictors")
+#residuals plotted show that model overpredicts suicide rate
+mod2 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+year, data=.)
+suimod2 <- pred_data %>%
+  add_predictions(mod2) %>%
+  add_residuals(mod2)
+ggplot(suimod2, aes(x=resid))+
+  geom_freqpoly()+
+   labs(title="Residuals Plot of Suicide Rates with Age, \nContinent, and Year as Predictors")
+mod3 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+year+sex, data=.)
+suimod3 <- pred_data %>%
+  add_predictions(mod3) %>%
+  add_residuals(mod3)
+ggplot(suimod3, aes(x=resid))+
+  geom_freqpoly()+
+  labs(title= "Residuals Plot of Suicide Rates with Age, \n Year, Continent, and Sex as Predictors")
+mod5 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+sex, data=.)
+suimod5 <- pred_data %>%
+  add_predictions(mod5) %>%
+  add_residuals(mod5)
+ggplot(suimod5, aes(x=resid))+
+  geom_freqpoly()+
+  labs(title= "Residuals Plot of Suicide Rates with Age, \nContinent, and Sex as Predictors")#best model based on residuals
+summary(mod5)
+```
+#Discussion
+    The economic data followed the trend in the background literature demonstrating that data is inconsistently related to suicide rates. One finding indicative of this failing of economic data is that our model found suicide rise with education spending. This finding also likely reflects issues with our data. It could be that outside of large economic shocks like recessions, economic data has relatively weak predictive power for suicide rate. Additionally, previous literature have suggested limitations to using economic factors as predictors of suicide rates. For example, risk of bias may exist where suicides are likely to be underreported in areas due to sociocultural factors and stigma associated with suicide (Oyesanya et al., 2015). Limitations such as these make it difficult to draw consistent correlations between economic variables and suicide rates. 
+    
+    ** put in results - Smaller countries have too much of an impact on the results
+    
+    It is interesting that the only truly consistent predictor of suicide rates in this dataset was male sex (interestingly, female sex was never implicated); given the fact that males and females make up almost equal parts of the world population, it seems strange that males in this dataset were so much more likely to commit suicide. Previous literature suggests that the reason why our dataset observed higher male suicide rates was due to the fact that men are more likely to use lethal methods for suicide and so complete suicide attempts more often, even though research has also suggested that women make more suicide attempts than men (Khazaei et al., 2017; Vijayakumar, 2015). Male sex also interacted with most of the modeled variables, suggesting that this variable’s pivotal role in suicide rates should be further explored. The nature of the GDP per capita variable is also quite interesting; it seems that, when each sex is isolated, GDP per capita significantly predicts suicide rates only in interaction with male sex, but has no interaction with female sex. Overall, these findings are significant because they show that even if demographic factors overall are not the best predictors of suicide which previous research suggests, they can still have a not negligible effect on rates internationally; it is important to note that our findings on male sex also do overall corroborate previous research, showing that suicide literature is valid and fairly reliable. Suicide data does include some weak points, such as a potentially inadequate list of implicated demographic variables (many variables are not measured consistently across countries and years) which could mean that analysis of suicide rates is missing a critical predictor variable. For this reason, future research should be geared towards assassing suicide rates in light of a larger pool of demographic features, which might lend themselves to explaining the huge number of outlier values in our plots. 
+    The first predictive model created combines the variables seen to visually have an impact on suicide rates by age: continent, generation, sex and year. The summary of the model showed that the generation variable had little effect on suicide rate (by its impact on suicide rate and p-value significance). Based on this finding, a new model was created with age, continent, generation and year as predictors of suicide rate. When the residuals from this model were plotted, it showed that predictions were vastly different from actual suicide rates (range of residuals is more than 60). An additional model was made only using age, continent and sex as predictors of suicide rates, which yielded the smallest residuals (compared to the previous models, and models only using age). However, despite the large number of residuals around 0, there were still extreme residuals present. These extreme variables were isolated and revealed to be mostly of the GI generation and from the “Other” continent factor (lumped factor of observations from Africa, Asia and Oceania due to the low count of observations compared to Americas and Europe in the dataset). When considering this third model, it supports the visualized data and existing literature that seniors aged 75 years and above, especially in industrialized countries (eg. European nations), have the highest suicide rates among all age groups (Waern et al., 2003). To synthesize with research on male suicide rates, with the odds ratio of males dying by suicide compared to females being 3.5 according to the CDC (Huang et al., 2017), our results are comparable to current literature in that older males from industrialized nations are more likely to have higher suicide rates.  
+    
+    Based on our analysis, it is evident that determining the key demographic and economic factors that contribute to global suicide rates is more complex than postulated. This is due to a multitude of factors such as varying sociocultural contexts that are hard to account for in data (eg. underreporting due to stigma) as well as complex interactions between different variables. Our research has confirmed that it is extremely difficult to predict suicide rates and more in-depth studies must be conducted to better understand factors that contribute to global suicide rates. 
+    
+\newpage
+---
+title: "Appendix"
+---
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+#-------Read Data--------
+library(tidyverse)
+library(modelr)
+library(ggplot2)
+library(dplyr)
+library(naniar)
+suicidedata <- read_csv("master.csv") 
+#data set taken from https://www.kaggle.com/russellyates88/suicide-rates-overview-1985-to-2016
+#make sure the master.csv is in your working directory 
+#-------Exploring Outliers/Errors in Suicide Data---------
+suicidedata %>% 
+  count(year) #removed 2016 with very low numbers (<200) <- outliers (found from raw suicide count)
+suicidedata %>% 
+  group_by(country) %>% 
+  summarise(sum(suicides_no)) %>% 
+  filter(`sum(suicides_no)`==0) #Dominica & Saint Kitts and Nevis have 0 over years (remove) <- outliers
+str(suicidedata) #also change gdp to integer (from character)
+#-------Cleaning Kaggle Suicide Data---------
+suicidedataclean <- suicidedata %>% 
+  select(-`country-year`) %>% #Remove country.year column (redundant)
+  filter(year!=2016,
+         country!="Dominica",
+         country!="Saint Kitts and Nevis") %>% 
+  rename(gdp_year=`gdp_for_year ($)`,
+         gdp_per_capita=`gdp_per_capita ($)`)
+#-------Creating Usable DataSets from Cleaned Data--------
+#yearly_data: aggregated by country, year
+aggregate(suicidedataclean$suicides_no, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(country=suicidedataclean$country, year=suicidedataclean$year), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+yearly_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#-------Adding Other Datasets to Suicide Data----------
+#Adding Continent Column from Gapminder#
+library(gapminder)
+countryregion <- gapminder %>% 
+  group_by(country, continent) %>% 
+  count() %>% 
+  select(country,continent) #get all countries
+suicidedataclean <- merge(suicidedataclean, countryregion) #assign continent value
+#yearly_data: aggregated by country, year, continent
+aggregate(suicidedataclean$suicides_no, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(country=suicidedataclean$country, year=suicidedataclean$year, continent=suicidedataclean$continent), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+yearly_data_2 <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#sex_data: aggregated by year, sex
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, sex=suicidedataclean$sex),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,sex=suicidedataclean$sex), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,sex=suicidedataclean$sex), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+sex_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#age_data:aggregated by year, age
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, age=suicidedataclean$age),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,age=suicidedataclean$age), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,age=suicidedataclean$age), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+age_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#generation_data: aggregated by year, generation
+aggregate(suicidedataclean$suicides_no, by=list(year=suicidedataclean$year, generation=suicidedataclean$generation),FUN=sum) %>%
+  rename(c( "suicides_no" = "x")) -> data1
+aggregate(suicidedataclean$population, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation), FUN=sum) %>%
+  rename(c( "population" = "x"))->data2
+aggregate(suicidedataclean$gdp_per_capita, by=list(year=suicidedataclean$year,generation=suicidedataclean$generation), FUN='mean') %>%
+  rename(c( "gdp_per_capita" = "x"))->data3
+gen_data <- left_join(data1, data2) %>%
+  left_join(data3) %>%
+  mutate("gdp" = gdp_per_capita*population) %>%
+  mutate("suicide_per_100k" = suicides_no/population*100000)
+#region_data: aggregated by year, world region
+country_per_continent <- yearly_data_2 %>% 
+  group_by(continent, year) %>%
+  count(continent) #low numbers in Oceania & Africa & Asia -> group then together
+region_data <- yearly_data_2 %>% 
+  select(year, suicides_no, population, gdp, continent) %>% 
+  mutate(continent = fct_lump(continent, n=2)) %>% 
+  group_by(continent, year) %>% 
+  summarise(sum(suicides_no),sum(population), sum(gdp)) %>% 
+  rename(suicides_no=`sum(suicides_no)`, population=`sum(population)`, gdp=`sum(gdp)`) %>% 
+  mutate(suicide_rate = (suicides_no/population*100000),
+         gdp_per_capita = (gdp/population))
+#-------Looking at Economic Factors ----------
+yearly_data %>% 
+  ggplot(aes(x = year, y =suicide_per_100k)) +
+  stat_bin_hex()+
+  scale_fill_gradient(low= "lightblue", high = "darkblue")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "Year")+
+  ggtitle("Suicide Rates over Time")
+#One country has extremely high suicide rates in a few years
+#That country is lithuania and the years are after the breakup of the soviet union
+yearly_data %>% 
+  filter(country == "Lithuania") %>% 
+  ggplot(aes(x = gdp_per_capita, y = suicide_per_100k)) +
+  geom_point()+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("Lithuania GDP vs Suicide Rates")
+#Plotting Lituania's GDP vs suicide rates
+yearly_data %>% 
+  ggplot(aes(x = gdp_per_capita, y = suicide_per_100k)) +
+  stat_bin_hex()+
+  scale_fill_gradient(low= "lightblue", high = "darkblue")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita vs Suicide Rates")
+#plotting the world's suicide rates vs gdp per capita
+#linear model based on gdp per capita: seeing if gdp per capita predicts suicide rates
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita, data = .)->yearly_model
+yearly_data %>% 
+  add_predictions(yearly_model) %>% add_residuals(yearly_model)->yearly_data
+ggplot(yearly_data)+
+  geom_point(aes(x = gdp_per_capita, y = suicide_per_100k))+
+  geom_line(aes(x = gdp_per_capita, y = pred), color = "orange")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita Linear Model")
+#the model goes the opposite direction of our expectation
+#model with beta squared interaction: seeing if adding a quadratic factor improves the validity of the model
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita + I(gdp_per_capita^2), data = .)->yearly_model2
+yearly_data %>% 
+  add_predictions(yearly_model2) %>% add_residuals(yearly_model2)->yearly_data
+ggplot(yearly_data)+
+  geom_point(aes(x = gdp_per_capita, y = suicide_per_100k))+
+  geom_line(aes(x = gdp_per_capita, y = pred), color = "orange")+
+  theme_minimal()+
+  labs(y = "Suicides per 100k Population", x = "GDP per Capita")+
+  ggtitle("GDP per Capita Quadratic Model")
+#Model is better but there are some issues
+#We need some way to weight the points based on population. the countries with the highest GDP per capita are the largest
+#and all the countries with low GDP and low suicides are relatively small
+#adding in data from the world bank development indicators (https://databank.worldbank.org/source/world-development-indicators#)
+read_csv("Education Spending Data.csv") -> Education_Spending_Data 
+read_csv("Unemployment Data.csv") -> Unemployment_Data
+#cleaning new dataframes
+Education_Spending_Data %>% 
+  mutate(across('1987':'2015', as.numeric))->Education_Spending_Data
+Education_Spending_Data %>%    
+  pivot_longer(!'Country Name', names_to = "year", values_to = "Education Spending") ->education
+education %>% 
+  mutate(across(year, as.integer)) %>% 
+  rename(country = `Country Name`) ->education
+left_join(yearly_data, education) ->yearly_data
+Unemployment_Data %>% 
+  mutate(across('1987':'2015', as.numeric))->Unemployment_Data
+Unemployment_Data %>%     
+  pivot_longer(!'Country Name', names_to = "year", values_to = "Unemployment Rate") ->unemployment
+unemployment %>% 
+  mutate(across(year, as.integer)) %>% 
+  rename(country = `Country Name`) ->unemployment
+left_join(yearly_data, unemployment) ->yearly_data
+#plotting the world's suicide rates vs unemployment
+yearly_data %>% 
+  ggplot(aes(x = `Unemployment Rate`, y = suicide_per_100k)) +
+  stat_bin_hex()+
+  scale_fill_gradient(low= "lightblue", high = "darkblue")+
+  ylab("Suicides per 100k Population")+
+  ggtitle("Unemployment and Suicide Rates")
+#model for suicide rate ~ GDP, unemployment, education spending
+yearly_data %>% 
+  lm(suicide_per_100k ~ gdp_per_capita + `Unemployment Rate` + `Education Spending`, data = .)->yearly_model3
+yearly_data %>% 
+  add_predictions(yearly_model3) %>% add_residuals(yearly_model3)->yearly_data
+#-------Addition of Gender Datasets from World Bank--------
+#Added unemployment and infant mortality rates from (https://databank.worldbank.org/source/world-development-indicators#)
+# column of female unemployment
+gender3 <- read_csv("unemployment.csv")
+gender3 %>% select(-'Series Code', -'Country Code') -> gender3
+gender3 %>% pivot_longer(cols=contains("["), names_to="year", values_to="count") -> gender3
+gender3 %>% rename(female_unemployment = "count", country = "Country Name") %>% select(-'Series Name') -> gender3
+gender3$year <- substr(gender3$year, start=1, stop=4)
+gender3$year <- as.integer(gender3$year)
+gender3 %>% select(-country) -> gender3_1
+full_join(suicidedataclean, gender3) -> suicidedataclean2
+suicidedataclean2$female_unemployment <- substr(suicidedataclean2$female_unemployment, start=1, stop=4)
+suicidedataclean2 %>% replace_with_na(replace=list(female_unemployment = "..")) -> suicidedataclean2
+# column of male unemployment
+gender4 <- read_csv("male_unem.csv")
+gender4 %>% select(-'Series Code', -'Country Code') -> gender4
+gender4 %>% pivot_longer(cols=contains("["), names_to="year", values_to="count") -> gender4
+gender4 %>% rename(male_unemployment = "count", country = "Country Name") %>% select(-'Series Name') -> gender4
+gender4$year <- substr(gender4$year, start=1, stop=4)
+gender4$year <- as.integer(gender4$year)
+full_join(suicidedataclean, gender4) -> suicidedataclean3
+suicidedataclean3$male_unemployment <- substr(suicidedataclean3$male_unemployment, start=1, stop=4)
+(suicidedataclean3 %>% replace_with_na(replace=list(male_unemployment = "..")) -> suicidedataclean3)
+# column of male infant mortality rate (deaths per 1000 infant males)
+gender5 <- read_csv("deaths.csv")
+gender5 %>% select(-'Series Code', -'Country Code') -> gender5
+gender5 %>% pivot_longer(cols=contains("["), names_to="year", values_to="count") -> gender5
+gender5 %>% rename(infant_deaths_per_1000_male = "count", country = "Country Name") %>% select(-'Series Name') -> gender5
+gender5$year <- substr(gender5$year, start=1, stop=4)
+gender5$year <- as.integer(gender5$year)
+full_join(suicidedataclean, gender5) -> suicidedataclean4
+(suicidedataclean4 %>% replace_with_na(replace=list(infant_deaths_per_1000_male = "..")) -> suicidedataclean4)
+# male and female unemployment datasets joined
+full_join(suicidedataclean2, suicidedataclean3) -> suicidejoin1
+# male and female unemployment and infant mortality (male) datasets joined into a final product
+full_join(suicidejoin1, suicidedataclean4) -> suicidejoin2
+#-------Exploring the Data for Gender Interactions with More Aggregated Datasets--------
+aggregate(suicidejoin2$`suicides/100k pop`, by=list(sex=suicidejoin2$sex, year=suicidejoin2$year, unemployment=suicidejoin2$female_unemployment, generation=suicidejoin2$generation), FUN=sum) %>%
+  rename(c("suicides_rate" = "x")) -> unem_fem # aggregate by sex, year, female unemployment, generation
+aggregate(suicidejoin2$`suicides/100k pop`, by=list(sex=suicidejoin2$sex, year=suicidejoin2$year, unemployment=suicidejoin2$male_unemployment, generation=suicidejoin2$generation), FUN=sum) %>%
+  rename(c("suicides_rate" = "x")) -> unem_male # aggregate by sex, year, male unemployment, generation
+#plotting the correlation between female unemployment and suicide rate 
+unem_fem %>% ggplot(aes(x=unemployment, y=suicides_rate)) +
+  geom_jitter(aes(color=year), alpha=0.5) +
+  xlab("Female Unemployment Rate") +
+  ylab("Suicide Rate") +
+  ggtitle("No Visual Relationship Between Female Unemployment and Suicide Rate") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) 
+# In a graph of female unemployment vs. suicide rate and colored by year, there is no relationship between female unemployment and suicide rate
+#plotting the correlation between male unemployment and suicide rate
+unem_male %>% ggplot(aes(x=unemployment, y=suicides_rate)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("Male Unemployment Rate") +
+  ylab("Suicide Rate") +
+  ggtitle("No Strong Relationship Between Male Unemployment and Suicide Rate") +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) 
+# In a graph of male unemployment vs. suicide rate and colored by sex, there is no relationship between male unemployment and suicide rate
+#plotting the correlation between male infant mortality and suicide rate
+suicidejoin2 %>% filter(!is.na(sex)) %>% 
+  ggplot(aes(x=infant_deaths_per_1000_male, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex)) +
+  xlab("Infant Male Mortality Rate") +
+  ylab("Suicide Rate") +
+  ggtitle("No Strong Relationship Between Male Infant Mortality and Suicide Rates") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) 
+# There is also no discernable relationship between infant male mortality rate and suicide rate
+# Surprisingly, it seems that unemployment for either sex and suicide do not correlate,
+# and neither do male infant mortality and suicide, although this will be modeled later 
+# to be sure
+# --------------------------Main Findings of Initial Graphs that Seem to Implicate a Relationship Between Sex and Suicide Rate, as Well as Sex Differences-------------------------
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=continent, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("Continent") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of Continent Versus Suicide Rate") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14))
+# Modeling suicides by continent, it seems that Europe has by far the highest suicide rates 
+suicidejoin2 %>% filter(continent=="Europe") -> europesuicide
+europesuicide %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of GDP Per Capita Versus Suicide Rate for European Countries") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14)) +
+  labs(caption="-there is an observable negative correlation between GDP and suicide-")
+# Zooming in on Europe, we see a general negative correlation between gdp per 
+# capita and suicide rate, with dramatic sex differences in suicide
+# rates but the same general trend for both sexes; however, this might be due more
+# to outliers than an actual effect (this will be explored more later)
+europesuicide %>% ggplot(aes(x=sex, y=`suicides/100k pop`)) +
+  geom_violin(aes(fill=sex)) +
+  xlab("Sex") +
+  ylab("Suicide Rate") +
+  ggtitle("Violin Plot Shows Large Sex Differences in Suicide Rate Distribution") +
+  theme(plot.title = element_text(face="bold", hjust=0.5))
+# A violin plot of this sex difference shows that female suicide rates are much lower and also have a much shorter tail of outliers
+europesuicide %>% ggplot(aes(x=year, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("Year") +
+  ylab("Suicide Rate") +
+  ggtitle("No Year-Related Reason for the Huge European Suicide Rate") +
+  theme(plot.title = element_text(face="bold", hjust=0.5))
+# To check one more thing, this graph depicts year against suicide rate in Europe; as shown earlier, there is not correlation, although there are a few
+# extra male outliers around the 1990s. A few tragedies such as the death of Princess Diana occurred in 1990s Europe, but there is no actual spike
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of GDP Per Capita Versus Suicide Rate for All Countries") +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14)) +
+  labs(caption="-the overall observable association between suicide and GDP is seen here-")
+# Here is a broader look at the same trend found earlier in Europe; a negative
+# correlation between gdp per capita and suicide rate, which is especially 
+# prominent for males
+sex_data %>% ggplot(aes(x=gdp_per_capita, y=suicide_per_100k)) +
+  geom_jitter(aes(color=sex), alpha=0.5) +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) +
+  xlab("GDP per Captia") +
+  ylab("Suicide Rate") +
+  ggtitle("The Same Sex Difference But a Clearer View of the Real Relationship Between GDP and Suicide")
+# Here is the sex difference again shown from an aggregated dataset, which gives an
+# interesting view of the GDP/suicide rate relationship; that is, the negative
+# association seen in the larger dataset might be due to overplotting or something 
+# else rather than a correlation
+region_data %>% ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
+  geom_jitter(aes(color=continent), alpha=0.5) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("The Americas are an Outlier in the Relationship Between GDP and Suicide") +
+  theme(plot.title = element_text(face="bold", hjust=0.5))
+# Just for a little extra kick, here is a graph of gdp vs. suicide rate
+# aggregated by continent; it seems like the suicide rate in the Americas
+# is unique in that it doesn't correlate with gdp, so let's remove it
+region_data %>% filter(continent!="Americas") %>% 
+  ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
+  geom_jitter(aes(color=continent), alpha=0.5) +
+  geom_smooth() +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Model of GDP Per Capita Versus Suicide Rate for Continents Excluding the Americas") +
+  scale_color_brewer(palette="Set2", name="Continent",
+                     labels=c("Europe", "Other")) +
+  theme_light() +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14))
+# After removing the Americas, Europe and other continents seem to have suicide
+# rates that follow an overall visual negative correlation with gdp
+suicidejoin2 %>% rename(suicide_rate = "suicides/100k pop") -> suicidejoin2
+# variable renamed for efficiency
+suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
+  geom_point(aes(color=sex)) +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2)) +
+  facet_grid(~sex) +
+  xlab("GDP per Capita") +
+  ylab("Suicide Rate") +
+  ggtitle("Faceted Model of GDP Versus Suicide Rate With a Quadratic Function") +
+  theme_light() +
+  labs(caption="-quadratic model is showing the relationship between GDP and suicide-") +
+  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
+  theme(axis.text.x=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(axis.text.y=element_text(family="Times",face="bold",
+                                 colour="brown",size=rel(0.9))) + 
+  theme(legend.title=element_text(face = "bold", 
+                                  family="Times",colour="brown",size =14))
+# Let's debunk the trends previously seen in predicting suicide rate from gdp;
+# this graph, faceted by sex and with a quadratic equation fitting the prediction
+# of suicide rate from gdp, shows that the correlation might not be what it 
+# visually appears to be; this will be explored with simple regression models, 
+# but it could also be affected by the deviating correlation between American 
+# suicides and gdp or the astoundingly high rates of suicide in Europe
+# From these plots, it seems as though Europe has a much higher suicide rate that other
+# continents over the years, and that GDP per capita might negatively predict suicide
+# rate in both sexes; however, the last couple of graphs seem to give evidence 
+# against this assertion. Another large trend in this data is that male suicide
+# rate is remarkably and reliably higher across all plots.
+# --------------------------Making Models of the Main Findings and Non-Correlated Findings-----------------------------
+# The models will be presented through summary statistics because of the difficulty
+# of plotting continuous variables and their interactions; the models will be
+# made to corroborate or debunk previous graphical findings
+suicidejoin2 -> suicide_exp 
+# The suicide rate variable has been renamed and a new dataset loaded to differentiate model code
+# Model 1: predicting suicide rate from sex and gdp per capita
+lm(suicide_rate ~ sex +
+     gdp_per_capita +
+     sex*gdp_per_capita, data=suicide_exp) -> model1
+summary(model1)
+# A summary of this model finds that male sex, gdp per capita, and the interaction
+# between these two variables are all significant predictors of suicide rate,
+# which corroborates the previous graphs of a correlation
+suicide_exp %>% add_predictions(model1, var="pred1") %>% add_residuals(model1, var="resid1") -> suicide_exp
+suicide_exp %>% ggplot(aes(resid1)) +
+  geom_freqpoly(binwidth=0.5)
+# A plot of the residuals, however, shows that this model is a bit all over the place,
+# which is likely due to the large amount of outliers this data contains
+# Model 2: predicting suicide rate from sex and gdp per capita in aggregated data
+lm(suicide_per_100k ~ sex +
+     gdp_per_capita +
+     sex*gdp_per_capita, data=sex_data) -> model2
+summary(model2)
+# When comparing the aggregated and non-aggregated data, male sex and gdp per 
+# capita predict suicide rate, but the interaction between them does not
+# Model 3: predicting American suicides by sex and gdp and then sex and year
+aggregate(suicide_exp$suicide_rate, by=list(year=suicide_exp$year, country=suicide_exp$country, sex=suicide_exp$sex, gdp=suicide_exp$gdp_per_capita),FUN=sum) %>%
+  rename(c( "suicide_rate" = "x")) -> sex_country_data
+sex_country_data %>% filter(country=="United States") -> sex_USA_data
+# new aggregated dataset of American suicides created
+lm(suicide_rate ~ sex +
+     gdp +
+     sex*gdp, data=sex_USA_data) -> model3
+summary(model3)
+# Male sex and the interaction of gdp and male sex are significant predictors
+# Model 4: Exploring sex differences in Europe
+aggregate(suicide_exp$suicide_rate, by=list(year=suicide_exp$year, continent=suicide_exp$continent, sex=suicide_exp$sex, gdp=suicide_exp$gdp_per_capita),FUN=sum) %>%
+  rename(c( "suicide_rate" = "x")) -> sex_continent_data
+sex_continent_data %>% filter(continent=="Europe") -> sex_Euro_data
+# new aggregated dataset
+lm(suicide_rate ~ sex +
+     gdp +
+     sex*gdp, data=sex_Euro_data) -> model4
+summary(model4)
+# Like the United States model, male sex and the interaction between male sex and
+# gdp are significant predictors of suicide in Europe
+# Model 5: predicting suicide rate from sex and male infant mortality rate
+suicide_exp$infant_deaths_per_1000_male <- as.numeric(suicide_exp$infant_deaths_per_1000_male)
+# Male infant mortality was imported as a factor variable, so in order to be modeled
+# it had to be converted into a numeric
+lm(suicide_rate ~ sex +
+     infant_deaths_per_1000_male +
+     sex*infant_deaths_per_1000_male, data=suicide_exp) -> model5
+summary(model5)
+# Contrary to the previous graph, this model strongly predicts suicide from male
+# infant mortality rate, male sex, and the interaction
+# Model 6: predicting suicide rate from sex and male unemployment
+suicide_exp$male_unemployment <- as.numeric(suicide_exp$male_unemployment)
+# Male unemployment was imported as a factor variable, so in order to be modeled
+# it had to be converted into a numeric
+lm(suicide_rate ~ sex +
+     male_unemployment +
+     sex*male_unemployment, data=suicide_exp) -> model6
+summary(model6)
+# Going back to the absence of a relationship between unemployment and suicide,
+# this model found that male unemployment was not a significant predictor of
+# suicide, but male sex and the interaction variable were significant
+# As an aside, the aggregated data (Model_) shows the same thing
+unem_male$unemployment <- as.numeric(unem_male$unemployment)
+# Male unemployment was imported as a factor variable, so in order to be modeled
+# it had to be converted into a numeric
+lm(suicides_rate ~ sex +
+     unemployment +
+     sex*unemployment, data=unem_male) -> model_
+summary(model_)
+# -------------------------------In Conclusion...-------------------------------
+# From the models of aggregated and original data, it seems that male sex is a 
+# major predictor of suicide both individually and in interaction with multiple variables,
+# such as male unemployment and gdp; in addition, gdp per capita also seems to be a predictor. 
+# Some unexpected findings from these models are that male infant mortality rate 
+# and HDI individually predicted suicide; expectedly, variables like year and male 
+# unemployment were not significant individual predictors.
+#---------Looking at Additional Sex and Generation Models-------
+#model for only sex as predictor of suicide rate
+modsex<- pred_data %>% 
+  lm(suicide_per_100k~sex, data=.)
+suimod8 <-  pred_data %>% 
+  add_predictions(modsex) %>% 
+  add_residuals(modsex)
+ggplot(suimod8, aes(x=resid))+
+  geom_freqpoly() #poor predictor by itself, large residuals
+summary(modsex)
+mod4 <- pred_data %>% 
+  lm(suicide_per_100k~age+continent+generation+sex, data=.)
+suimod4 <- pred_data %>%
+  add_predictions(mod4) %>%
+  add_residuals(mod4)
+ggplot(suimod4, aes(x=resid))+
+  geom_freqpoly() #understand what are the outliers
+suimod4a<- suimod4 %>%
+  filter(resid >= 20 | resid <=-20)
+#GI Generation and observations from Africa, Asia, and Oceania -> limitation of low number of observations
+```
