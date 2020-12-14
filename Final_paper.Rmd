@@ -514,7 +514,7 @@ summary(mod5)
 ---
 title: "Appendix"
 ---
-```{r, echo=FALSE, warning=FALSE}
+```{r, message=FALSE, error=FALSE, warning=FALSE}
 #-------Read Data--------
 library(tidyverse)
 library(modelr)
