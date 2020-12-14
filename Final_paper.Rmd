@@ -25,7 +25,7 @@ output: pdf_document
     
     Focusing on the last demographic variables provided by the dataset, age and generation, a dataframe aggregating the suicide dataset by year and age was created. A line plot was created to understand the relationship between suicide rate and age group over time. Additionally, scatter plots were created to understand the potential economic, location, and sex impact on suicide rates by age group. These visualization steps were repeated for a dataframe aggregating the suicide dataset by year and generation. From the results of this exploratory analysis, predictive linear models were created to understand whether generation and/or age are reliable predictors of suicide risks and whether sex or location interacts with this model.
 
-#Results
+##Results
 
     Suicide rates have remained relatively consistent over time with no clear visual trends. As shown in Figure 1a, there seemed to be a general downward trend between gdp and suicide rates and while Lithuania’s data clearly showed this (Figure 1b) , the general linear model showed an increase of suicide rates with GDP per capita (Figure 2).
     
