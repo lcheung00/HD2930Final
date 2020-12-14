@@ -241,10 +241,11 @@ yearly_data %>%
 
 yearly_data %>% 
   add_predictions(yearly_model3) %>% add_residuals(yearly_model3)->yearly_data
-#end of evans part 
 
 #-------Addition of Gender Datasets from World Bank--------
 #Added unemployment and infant mortality rates from (https://databank.worldbank.org/source/world-development-indicators#)
+#Wanted to explore a wider breadth of demographic variables in case original dataset was missing something
+#(I didn't end up exploring these variables further but this is where I started)
 
 # column of female unemployment
 gender3 <- read_csv("unemployment.csv")
@@ -326,9 +327,9 @@ suicidejoin2 %>% filter(!is.na(sex)) %>%
   theme(plot.title = element_text(face="bold", hjust=0.5)) 
 # There is also no discernable relationship between infant male mortality rate and suicide rate
 
-# Surprisingly, it seems that unemployment for either sex and suicide do not correlate,
-# and neither do male infant mortality and suicide, although this will be modeled later 
-# to be sure
+# It seems that unemployment for either sex and suicide do not correlate,
+# and neither do male infant mortality and suicide; this direction was not pursued further because other
+# interesting effects were found that we wanted to explore further
 
 
 # --------------------------Main Findings of Initial Graphs that Seem to Implicate a Relationship Between Sex and Suicide Rate, as Well as Sex Differences-------------------------
@@ -365,7 +366,7 @@ europesuicide %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
 # Zooming in on Europe, we see a general negative correlation between gdp per 
 # capita and suicide rate, with dramatic sex differences in suicide
 # rates but the same general trend for both sexes; however, this might be due more
-# to outliers than an actual effect (this will be explored more later)
+# to outliers than an actual effect 
 
 europesuicide %>% ggplot(aes(x=sex, y=`suicides/100k pop`)) +
   geom_violin(aes(fill=sex)) +
@@ -374,16 +375,6 @@ europesuicide %>% ggplot(aes(x=sex, y=`suicides/100k pop`)) +
   ggtitle("Violin Plot Shows Large Sex Differences in Suicide Rate Distribution") +
   theme(plot.title = element_text(face="bold", hjust=0.5))
 # A violin plot of this sex difference shows that female suicide rates are much lower and also have a much shorter tail of outliers
-
-europesuicide %>% ggplot(aes(x=year, y=`suicides/100k pop`)) +
-  geom_jitter(aes(color=sex), alpha=0.5) +
-  xlab("Year") +
-  ylab("Suicide Rate") +
-  ggtitle("No Year-Related Reason for the Huge European Suicide Rate") +
-  theme(plot.title = element_text(face="bold", hjust=0.5))
-# To check one more thing, this graph depicts year against suicide rate in Europe; as shown earlier, there is not correlation, although there are a few
-# extra male outliers around the 1990s. A few tragedies such as the death of Princess Diana occurred in 1990s Europe, but there is no actual spike
-
 
 suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=`suicides/100k pop`)) +
   geom_jitter(aes(color=sex), alpha=0.5) +
@@ -408,41 +399,19 @@ sex_data %>% ggplot(aes(x=gdp_per_capita, y=suicide_per_100k)) +
   theme(plot.title = element_text(face="bold", hjust=0.5)) +
   xlab("GDP per Captia") +
   ylab("Suicide Rate") +
-  ggtitle("The Same Sex Difference But a Clearer View of the Real Relationship Between GDP and Suicide")
+  ggtitle("Clearer View of the Relationship Between GDP and Suicide")
 # Here is the sex difference again shown from an aggregated dataset, which gives an
 # interesting view of the GDP/suicide rate relationship; that is, the negative
 # association seen in the larger dataset might be due to overplotting or something 
 # else rather than a correlation
 
-region_data %>% ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
-  geom_jitter(aes(color=continent), alpha=0.5) +
-  xlab("GDP per Capita") +
+suicidejoin2 %>% ggplot(aes(x=sex, y=`suicides/100k pop`)) +
+  geom_violin(aes(fill=sex)) +
+  xlab("Sex") +
   ylab("Suicide Rate") +
-  ggtitle("The Americas are an Outlier in the Relationship Between GDP and Suicide") +
+  ggtitle("Large Sex Differences in Suicide Rate Distribution") +
   theme(plot.title = element_text(face="bold", hjust=0.5))
-# Just for a little extra kick, here is a graph of gdp vs. suicide rate
-# aggregated by continent; it seems like the suicide rate in the Americas
-# is unique in that it doesn't correlate with gdp, so let's remove it
-
-region_data %>% filter(continent!="Americas") %>% 
-  ggplot(aes(x=gdp_per_capita, y=suicide_rate)) +
-  geom_jitter(aes(color=continent), alpha=0.5) +
-  geom_smooth() +
-  xlab("GDP per Capita") +
-  ylab("Suicide Rate") +
-  ggtitle("Model of GDP Per Capita Versus Suicide Rate for Continents Excluding the Americas") +
-  scale_color_brewer(palette="Set2", name="Continent",
-                     labels=c("Europe", "Other")) +
-  theme_light() +
-  theme(plot.title = element_text(face="bold", hjust=0.5)) + 
-  theme(axis.text.x=element_text(family="Times",face="bold",
-                                 colour="brown",size=rel(0.9))) + 
-  theme(axis.text.y=element_text(family="Times",face="bold",
-                                 colour="brown",size=rel(0.9))) + 
-  theme(legend.title=element_text(face = "bold", 
-                                  family="Times",colour="brown",size =14))
-# After removing the Americas, Europe and other continents seem to have suicide
-# rates that follow an overall visual negative correlation with gdp
+# Violin plot of the international data shows a very similar distribution to Europe
 
 suicidejoin2 %>% rename(suicide_rate = "suicides/100k pop") -> suicidejoin2
 # variable renamed for efficiency
@@ -462,19 +431,18 @@ suicidejoin2 %>% filter(!is.na(sex)) %>% ggplot(aes(x=gdp_per_capita, y=suicide_
                                  colour="brown",size=rel(0.9))) + 
   theme(legend.title=element_text(face = "bold", 
                                   family="Times",colour="brown",size =14))
-# Let's debunk the trends previously seen in predicting suicide rate from gdp;
-# this graph, faceted by sex and with a quadratic equation fitting the prediction
+# This graph, faceted by sex and with a quadratic equation fitting the prediction
 # of suicide rate from gdp, shows that the correlation might not be what it 
 # visually appears to be; this will be explored with simple regression models, 
-# but it could also be affected by the deviating correlation between American 
-# suicides and gdp or the astoundingly high rates of suicide in Europe
+# but it could also be affected by the astoundingly high rates of suicide in Europe
 
 
 # From these plots, it seems as though Europe has a much higher suicide rate that other
 # continents over the years, and that GDP per capita might negatively predict suicide
-# rate in both sexes; however, the last couple of graphs seem to give evidence 
-# against this assertion. Another large trend in this data is that male suicide
-# rate is remarkably and reliably higher across all plots.
+# rate in both sexes. Another large trend in this data is that male suicide
+# rate is remarkably and reliably higher across all plots. 
+# Models will include a deeper look at GDP and its interaction with sex, as well as looking 
+# at how well the trends in Europe actually match those internationally.
 
 
 # --------------------------Making Models of the Main Findings and Non-Correlated Findings-----------------------------
@@ -497,8 +465,8 @@ summary(model1)
 suicide_exp %>% add_predictions(model1, var="pred1") %>% add_residuals(model1, var="resid1") -> suicide_exp
 suicide_exp %>% ggplot(aes(resid1)) +
   geom_freqpoly(binwidth=0.5)
-# A plot of the residuals, however, shows that this model is a bit all over the place,
-# which is likely due to the large amount of outliers this data contains
+# A plot of the residuals, however, shows that this model vastly underpredicts many
+# observed values, which could be due to the long tail of outliers seen in the sex differences plots
 
 
 # Model 2: predicting suicide rate from sex and gdp per capita in aggregated data
@@ -508,18 +476,6 @@ lm(suicide_per_100k ~ sex +
 summary(model2)
 # When comparing the aggregated and non-aggregated data, male sex and gdp per 
 # capita predict suicide rate, but the interaction between them does not
-
-# Model 3: predicting American suicides by sex and gdp and then sex and year
-aggregate(suicide_exp$suicide_rate, by=list(year=suicide_exp$year, country=suicide_exp$country, sex=suicide_exp$sex, gdp=suicide_exp$gdp_per_capita),FUN=sum) %>%
-  rename(c( "suicide_rate" = "x")) -> sex_country_data
-sex_country_data %>% filter(country=="United States") -> sex_USA_data
-# new aggregated dataset of American suicides created
-
-lm(suicide_rate ~ sex +
-     gdp +
-     sex*gdp, data=sex_USA_data) -> model3
-summary(model3)
-# Male sex and the interaction of gdp and male sex are significant predictors
 
 
 # Model 4: Exploring sex differences in Europe
@@ -532,51 +488,16 @@ lm(suicide_rate ~ sex +
      gdp +
      sex*gdp, data=sex_Euro_data) -> model4
 summary(model4)
-# Like the United States model, male sex and the interaction between male sex and
-# gdp are significant predictors of suicide in Europe
-
-
-# Model 5: predicting suicide rate from sex and male infant mortality rate
-suicide_exp$infant_deaths_per_1000_male <- as.numeric(suicide_exp$infant_deaths_per_1000_male)
-# Male infant mortality was imported as a factor variable, so in order to be modeled
-# it had to be converted into a numeric
-lm(suicide_rate ~ sex +
-     infant_deaths_per_1000_male +
-     sex*infant_deaths_per_1000_male, data=suicide_exp) -> model5
-summary(model5)
-# Contrary to the previous graph, this model strongly predicts suicide from male
-# infant mortality rate, male sex, and the interaction
-
-
-# Model 6: predicting suicide rate from sex and male unemployment
-suicide_exp$male_unemployment <- as.numeric(suicide_exp$male_unemployment)
-# Male unemployment was imported as a factor variable, so in order to be modeled
-# it had to be converted into a numeric
-lm(suicide_rate ~ sex +
-     male_unemployment +
-     sex*male_unemployment, data=suicide_exp) -> model6
-summary(model6)
-# Going back to the absence of a relationship between unemployment and suicide,
-# this model found that male unemployment was not a significant predictor of
-# suicide, but male sex and the interaction variable were significant
-
-# As an aside, the aggregated data (Model_) shows the same thing
-unem_male$unemployment <- as.numeric(unem_male$unemployment)
-# Male unemployment was imported as a factor variable, so in order to be modeled
-# it had to be converted into a numeric
-lm(suicides_rate ~ sex +
-     unemployment +
-     sex*unemployment, data=unem_male) -> model_
-summary(model_)
-
+# Male sex and the interaction between male sex and
+# gdp are significant predictors of suicide in Europe, which is again similar to
+# what was found for the international data 
 
 # -------------------------------In Conclusion...-------------------------------
 # From the models of aggregated and original data, it seems that male sex is a 
-# major predictor of suicide both individually and in interaction with multiple variables,
-# such as male unemployment and gdp; in addition, gdp per capita also seems to be a predictor. 
-# Some unexpected findings from these models are that male infant mortality rate 
-# and HDI individually predicted suicide; expectedly, variables like year and male 
-# unemployment were not significant individual predictors.
+# major predictor of suicide both individually and in interaction with gdp; 
+# in addition, gdp per capita also seems to be a predictor. 
+# Additionally, European suicide rate statistics are highly similar to the trends
+# in the international data, which is interesting. 
 
 
 ```
